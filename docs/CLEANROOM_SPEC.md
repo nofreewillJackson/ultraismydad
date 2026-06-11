@@ -13,13 +13,31 @@ A technology-agnostic, conceptual blueprint of this application, written for a c
 
 This is a **personal build-archive and showcase**. One author ships a stream of *work items* — software projects, narrated videos, research writeups, and dated log entries — over a fixed 100-day campaign. The system catalogs that stream, groups it into product lines, cross-references it by technology and by narrative, and publishes it as a fast, crawlable public website plus machine-readable feeds.
 
-Architecturally, the defining choice is a **hard split between the write side and the read side** (a materialized-view / CQRS shape):
+Architecturally, the one invariant the domain actually demands is a **hard wall between authoring and reading**:
 
-- **Authoring** happens against a live, mutable datastore through a private admin surface and automated agents.
-- **Publishing** happens by *baking* that mutable state into immutable, pre-rendered artifacts on a schedule/trigger.
-- **Visitors never touch the live datastore.** They read only the baked artifacts.
+- **Authoring** happens against a live, mutable store through a private admin surface and automated agents.
+- **Reading is cheap and isolated.** Visitors get fast, crawlable pages and never touch the live store — no query, no auth, no datastore round-trip at request time.
 
-Everything interesting in the codebase is a consequence of that split: the snapshot step, the "needs republish" signal, the fallback chains, the inference heuristics that try to reconstruct relationships at bake time, and the media-ingestion pipeline that converts messy source files into a clean public contract.
+That invariant is domain law. The *specific way the current system honors it* — **baking the mutable state into immutable, pre-rendered artifacts on a manual trigger** (a materialized-view / CQRS shape) — is **one implementation, not the law itself.** It is a consequence of the original hosting choice (a static site that cannot re-render itself when the store changes); a different stack could honor the same invariant with a normal server plus edge/incremental caching.
+
+This distinction matters because *most of the machinery the current codebase treats as essential is downstream of that one implementation choice*, not of the domain: the snapshot exporter, the "needs republish" dirty-flag, the publish-state ledger, the five-deep source-fallback cascade. If you don't bake, they don't get automated — they cease to exist (see §3.4). What is genuinely domain-driven, and survives any stack, is narrower: the privacy boundary, the inference heuristics that try to reconstruct relationships at bake time (a *problem* to remove, not a feature), and the media-ingestion pipeline that converts messy source files into a clean public contract.
+
+---
+
+## Part 0.5 — The test: domain vs. accident
+
+This document exists to extract the **domain** (the *what* and the *why*) and discard the **implementation accidents** (the *how* a single solo author happened to ship it). Treating the original execution as immutable law would just port technical debt into a new language. So every claim below is held to one test:
+
+> **Would this survive if the author had picked a different stack on day one?**
+> - **Yes → domain.** Keep it; it constrains any rebuild. (The 100-day framing, the privacy boundary, work-item-as-atom, the path-free public contracts.)
+> - **No — it only exists because of the specific stack, free-tier limits, or the solo-vibecoder workflow → accident.** A cleanroom *deletes* it; it does not lovingly re-implement it.
+
+Two failure modes this guards against:
+
+1. **Canonizing an accident as architecture.** The bake / snapshot / publish-ledger apparatus is the biggest example — see Part 0 and §3.4.
+2. **Smuggling accidents into the schema.** Fields that exist only to paper over legacy data or un-captured relationships — parallel stack lists, name `aliases`, the unused `gated` state, `snapshotHtml` — are *not* domain (see §1.3).
+
+Where the rest of this spec describes such an accident, it now flags it explicitly as **(accident — do not port)** rather than presenting it as a thing to rebuild.
 
 ---
 
@@ -105,20 +123,17 @@ erDiagram
     text long_desc
     enum status "idea|building|launched|abandoned"
     date shipped_on
-    enum visibility "public|private|gated"
+    enum visibility "public|private"
     string slug
-    string[] free_stack_labels
-    string[] canonical_tech_refs
+    ref[] tech_refs "canonical vocabulary only"
     string[] tags
     url live_link
     url repo_link
     url media_link
     text inline_demo_html
     string[] screenshots
-    ref product_line
-    ref series
-    number embed_height
-    number sort_order
+    ref product_line "required FK"
+    ref series "optional FK"
   }
   PRODUCT_LINE {
     id stable_id
@@ -126,20 +141,17 @@ erDiagram
     string blurb
     brand mark_logo_wordmark
     enum visibility
-    number sort_order
   }
   SERIES {
     id stable_id
     ref product_line
     string name
-    string[] aliases
     enum visibility
   }
   TECHNOLOGY {
     id stable_id
     string name
     enum category "frontend|backend|data|infra|media|agents|other"
-    string[] aliases
     enum visibility
   }
   VIDEO_BUNDLE {
@@ -174,12 +186,14 @@ erDiagram
 **Entity notes (the conceptual contract, not the storage shape):**
 
 - **Work item** is the atom. Almost everything else exists to *group*, *classify*, or *enrich* work items. A work item can simultaneously be "a project" and "a video" — the *kind* is derived, not stored rigidly.
-- **Product line** is a coarse grouping ("which of my ongoing efforts is this part of"). There is a small fixed roster plus a catch-all bucket.
-- **Series** is a finer grouping *within* a line (e.g. an episodic run). Optional.
-- **Technology** is a controlled vocabulary. Work items carry two parallel lists: human-friendly free labels *and* canonical references into this vocabulary. The canonical refs are what power cross-cutting "what uses X" views; the free labels are display sugar.
+- **Product line** is a coarse grouping ("which of my ongoing efforts is this part of"), now a **required FK** on every work item. The as-built model also keeps a catch-all bucket for items with no line; that bucket is an **accident — do not port** (it's a sink for inference misses, §2.5). With line captured at authoring time, there are no unresolved items and so no catch-all.
+- **Series** is a finer grouping *within* a line (e.g. an episodic run). Optional. (The as-built `aliases[]` on series and technology is an **accident — do not port**; aliases exist only to support name-based matching, which §3.1 #5 deletes.)
+- **Technology** is a controlled vocabulary. A work item references it **by canonical ID only** — the display name lives on the technology record and is resolved at render. (The as-built work item carries a *second*, parallel list of free-text stack labels alongside the refs; that dual list is an **accident — do not port**. It exists only to paper over un-normalized legacy stack data. One list of refs; the canonical refs power all cross-cutting "what uses X" views.)
 - **Video bundle** is a rich, nested, **deliberately path-free** record describing a produced video — its segments, the visual style system used, recurring characters, cited sources, full transcript, and a production-cost/credits summary. It is the public-facing contract for the media side, intentionally decoupled from the raw production files it was derived from.
 - **Log entry** is a dated narrative post, attributed to either the human or an AI author, optionally cross-linking work items.
 - **Research doc** is authored long-form content managed as files rather than datastore records — a parallel content channel.
+- **Presentation hints are not domain.** Several as-built fields are pure display mechanics and are deliberately *omitted* from the model above: per-item `embed_height` (iframe sizing), the `gated` visibility value (scaffolding for an unbuilt paywall), and `snapshotHtml` (a UI-less backup of `inline_demo_html`). None survive the §0.5 test. If a rebuild wants embed sizing, it carries it as an explicit *view* concern, never as part of the domain record.
+- **Manual `sort_order` is a *contradiction*, not an editorial intent — resolve it, don't inherit it.** The as-built system can't decide whether the operator orders lines/series by hand. An explicit `sortOrder` exists and the admin tool, list view, and map view all honor it (built to be editorial) — but the flagship homepage graph silently re-derives order by recency, so the hand-set order never reaches the front page. That disagreement *is* the finding (an instance of §3.1 #4/#10), and it's a decision the rebuild must make on purpose, not a field to port. Default: **derive by recency**; if manual control is genuinely wanted, make it one *view* setting honored by every surface, not a per-record field half the renderers override.
 
 ## 1.4 Lifecycle & visibility states
 
@@ -204,12 +218,12 @@ stateDiagram-v2
   [*] --> private
   private --> public : operator publishes
   public --> private : operator unpublishes
-  private --> gated : reserve for future paywall
-  public --> gated
-  gated --> public
-  note right of gated
-    gated = visible-but-locked placeholder
-    (paywall not yet implemented)
+  note right of private
+    A third as-built state, "gated"
+    (a visible-but-locked paywall
+    placeholder), is omitted:
+    accident — do not port until a
+    real paywall exists (§0.5).
   end note
 ```
 
@@ -314,9 +328,9 @@ One append-only record per authoring write: `{ actor, client, operation, targetT
 6. The activity heatmap is computed from **ship dates of work items**, not from code-commit activity. (The author is explicitly non-coding; commit-based activity would misrepresent the work.)
 
 **Classification & grouping**
-7. Every work item resolves to exactly one product line; unresolved items fall to a catch-all bucket. A line with zero items is suppressed (except the catch-all).
+7. Every work item belongs to exactly one product line, **captured explicitly at authoring time** (a required FK). *(As-built, unresolved items fall to a catch-all bucket and empty lines are suppressed — both are accidents of runtime inference, §1.3/§2.5. With the FK required there are no unresolved items and no catch-all.)*
 8. A work item may optionally belong to one series within its line.
-9. Stack carries two lists: free display labels and canonical references. Canonical refs drive all cross-cutting technology views. Free labels must each resolve to a known technology (or the build fails). The literal placeholder "other" is forbidden in stored stack data.
+9. Every technology reference on a work item must resolve to the controlled vocabulary, or the build fails; the literal placeholder "other" is forbidden in stored data. *(As-built, stack is two parallel lists — free labels plus canonical refs; that duplication is an accident, §1.3. The invariant that survives is purely referential: refs resolve, no placeholders.)*
 10. A work item is treated as a *video* if it is explicitly typed so, carries video identifiers, or matches a produced video; otherwise it is a *project*. Kind is derived.
 
 **Slugs & links**
@@ -387,7 +401,7 @@ The current architecture is *functional and surprisingly resilient*, but it carr
 | 4 | **Two parallel data layers** (a live client layer and a build layer) with duplicated normalize/slug logic | Drift between the two; bugs fixed in one, not the other | A **single shared domain module** consumed by both authoring and rendering. One normalizer, one slugifier (today there are several subtly different ones). |
 | 5 | **Identity matching across systems by display name** (item↔video by title overlap; an external sync that matches by name) | Renames create duplicates; matching is probabilistic | Match only on **stable IDs**. Names are labels, never join keys. |
 | 6 | **Human-edited prose parsed by regex** in the media pipeline | Brittle; format drift breaks ingestion silently; "best-effort skip" hides data loss | Make the **authored source structured** (front-matter / a small schema) so ingestion is a parse, not a guess. The production tool emits the contract directly. |
-| 7 | **Manual publish despite a precise change signal** | The site can sit stale; the dirty-flag/journal is computed but unused for automation | **Event-driven publishing**: a change to the store (or an entry in the change journal) triggers an incremental rebuild+deploy, then resets the dirty flag. The ledger is already the right primitive. |
+| 7 | **A whole publish apparatus (snapshot exporter, dirty-flag, publish-state ledger, manual rebuild) to keep a static site fresh** | The entire machine exists to work around one thing: a baked static site can't re-render itself when the store changes. It's an accident of the hosting choice, not a domain need — yet it's the system's most elaborate subsystem | **Question the bake, don't just automate it.** The domain invariant is only "reads are cheap and never touch the write store" (§0.5). A server with edge/incremental caching honors that with *no* exporter, *no* dirty-flag, *no* publish ledger. If you keep static baking for other reasons, *then* make it event-driven (a change/journal entry triggers rebuild+deploy and resets the flag) — but recognize that's optimizing an accident. See §3.4. |
 | 8 | **Inconsistent visibility semantics** (items require `=="public"`; supporting records use `!="private"`) | Easy to leak a record that was never explicitly marked | One **explicit visibility enum with a default-deny rule**, enforced at a single export gate for *all* collections. |
 | 9 | **Mutable module-level caches + mixed SDK trust levels** | Hidden state across a build; privileged creds reachable from rendering | Stateless data access with an explicit, scoped cache. Privileged export is a separate, isolated step that hands off only the sanitized snapshot. |
 | 10 | **Three UI paradigms** (static templates + one component-framework island style + one vanilla-scripting island style) | Cognitive overhead; duplicated patterns; inconsistent interactivity | Pick **one rendering model**: static-first HTML with a single, consistent islands approach for the few interactive surfaces (graph, filters, theme). |
@@ -435,9 +449,32 @@ flowchart LR
 1. **Store relationships, derive presentation.** Anything that joins records (line, series, video) is data captured at authoring time. Anything that's purely how things look or count (day numbers, heatmaps, rollups, sort order) stays derived. The current system inverts this for relationships — fix that.
 2. **One contract, many emitters.** The "database-shaped, path-free" bundle idea is the best instinct in the codebase. Generalize it: define the read-model contracts first, then let *any* source (datastore, files, a future CMS) emit them. Consumers never change.
 3. **Make the privacy boundary a single, testable gate.** Default-deny, uniform across all collections, enforced once, covered by a test that asserts no non-public record ever appears downstream.
-4. **Turn the change journal into the publish trigger.** The hardest architectural problem (stale static site) is already 90% solved by the existing dirty-flag + event log. Wire it to automated rebuild/deploy and close the loop by resetting the flag on success.
+4. **The "stale static site" problem is self-inflicted — prefer dissolving it to automating it.** The dirty-flag + change journal are an impressive solution to a problem the domain never posed. First ask whether the rebuild even bakes; a cached server makes the whole question disappear. Keep the change journal only if you independently want an audit history — it's a fine event log, just not a load-bearing part of publishing. *(If you do keep baking, then yes, wire the journal to rebuild/deploy and reset the flag on success — §3.1 #7.)*
 5. **Eliminate machine-specific and instance-specific code.** No absolute personal paths, no per-record override maps, no name-based joins. These are the three recurring sources of fragility.
-6. **Keep the read side dumb and fast.** The materialized-view split is genuinely good: visitors should keep paying zero runtime cost. Preserve "all intelligence runs at bake time, the edge only serves files."
+6. **Keep the read side dumb and fast — that's the real invariant, not the bake.** Visitors should keep paying zero runtime cost; all intelligence runs ahead of the request. *How* you achieve that (static bake, incremental regeneration, edge cache) is a stack choice. Preserve the *property*, not the specific materialization machine that currently delivers it.
+
+## 3.4 The central accident: does materialization need to exist at all?
+
+Every other item in this part is a *local* cleanup. This one is structural, and it's the clearest application of the §0.5 test.
+
+The as-built system is organized around a **bake**: read the mutable store, freeze it into a snapshot, render static artifacts, serve those. Around that bake grew an entire support apparatus — the snapshot exporter, the privacy filter as an export step, the publish-state ledger (dirty-flag + pending count), the change journal as a would-be trigger, and the five-deep source-fallback cascade. Parts 1 and 2 describe all of it in detail because it is genuinely most of the code.
+
+But run the test: **would any of it survive a different day-one stack?** A conventional server with edge or incremental caching honors the only real invariant — *reads are cheap and never touch the write store* — and in doing so deletes:
+
+- the **snapshot exporter** (the cache *is* the read model),
+- the **dirty-flag / publish ledger** (cache invalidation replaces "you have unpublished changes"),
+- the **manual publish step** (there's nothing to bake),
+- the **fallback cascade** (one live source, one cache, behind a privacy gate),
+- and most of the §2.5 **inference heuristics**, which exist largely to reconstruct, *at bake time*, relationships a request-time render would simply read from the FK.
+
+What does **not** dissolve — and is therefore the actual domain to carry forward:
+
+- the **privacy gate** (default-deny, enforced once — keep it as a query/serialization boundary rather than an export step),
+- the **path-free public contracts** (Contract B especially — the best instinct in the codebase),
+- the **derived presentation layer** (day numbers, heatmap, rollups, slugs),
+- the **media-ingestion ETL** as a content-prep concern, independent of how pages are served.
+
+None of this mandates abandoning static generation — static-first is a perfectly good way to get cheap reads, and if chosen, §3.1 #7 still applies (make the bake event-driven). The point is to **stop treating the bake-and-its-ledger as *the architecture*.** It is a delivery tactic. Name the invariant, pick the tactic that fits the new stack, and let the rest fall away.
 
 ---
 
