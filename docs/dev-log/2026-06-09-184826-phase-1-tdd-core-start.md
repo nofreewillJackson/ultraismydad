@@ -108,9 +108,9 @@ dist/
 
 Before writing domain code, the first slice of observable behaviors was listed:
 
-- creating a work item without visibility defaults to `private`
-- every work item resolves to exactly one product line
-- public export excludes non-public work items
+- **creating a work item without visibility defaults to `private`** — the system separates authoring from delivery; a newly created item is unreviewed and possibly incomplete, so the safest default is invisible rather than published.
+- **every work item resolves to exactly one product line** — taxonomy assignment is often deferred during authoring, so the domain cannot hard-require it at creation time; a catch-all placeholder keeps the authoring flow unblocked without abandoning the invariant.
+- **public export excludes non-public work items** — every future read-side consumer (Astro site, API, etc.) must see the same filtered view; encoding this as a named domain function makes it impossible to accidentally bypass.
 
 This is not an architecture plan. It is only a list of externally observable business rules from the spec.
 
@@ -123,6 +123,8 @@ Behavior:
 ```text
 Creating a work item without visibility defaults to private.
 ```
+
+Rationale: at creation time a work item is unreviewed and likely incomplete. If the default were `public`, any draft — including one written by an AI agent or created accidentally — would appear on the public site at the next materialization bake. `private` is the fail-safe: the worst outcome is that content is invisible, not that broken or unintended content is published. Nothing should cross the authoring-to-delivery boundary without a deliberate, explicit act.
 
 Added `tests/work-item.test.ts`:
 
@@ -227,6 +229,8 @@ Behavior:
 ```text
 A work item with no explicit product line resolves to the catch-all product line.
 ```
+
+Rationale: the spec requires every work item to belong to a product line, but taxonomy assignment is often deferred — you may know what you built before you know which category it belongs to. Making `productLineId` mandatory at creation time would force that decision immediately, blocking drafts from being saved. The catch-all is a holding category: the domain never rejects a work item for missing taxonomy, and the item can be re-categorized later. This keeps authoring frictionless without abandoning the invariant that every work item always has a product line.
 
 Added one new test to `tests/work-item.test.ts`:
 
@@ -338,6 +342,8 @@ Behavior:
 ```text
 Only public work items cross into the read model.
 ```
+
+Rationale: without this rule encoded in the domain, every adapter that consumes work items — the Astro site, any future API, any reporting tool — would need to independently remember to filter by visibility. One forgotten filter anywhere exposes private content. Naming the filter as a domain function (`selectPublicWorkItems`) centralizes the rule so it cannot be accidentally bypassed. This is what makes the separation between the mutable authoring plane and the immutable delivery plane a guarantee rather than a convention that adapters are trusted to follow.
 
 Added `tests/privacy-gate.test.ts`:
 
