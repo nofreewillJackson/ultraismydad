@@ -1,0 +1,23 @@
+---
+import { getWorkItemPaths } from "../../app/work-item-pages";
+import { sampleStore } from "../../app/sample-data";
+
+// Thin glue: the framework boundary calls our tested use case. No business
+// logic lives here — which items become pages is decided by the export
+// (privacy gate), and the HTML is produced by the render function.
+export async function getStaticPaths() {
+  return getWorkItemPaths(await sampleStore());
+}
+
+const { html } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Project</title>
+  </head>
+  <body set:html={html}></body>
+</html>
