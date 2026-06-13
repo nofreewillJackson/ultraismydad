@@ -21,4 +21,13 @@ describe("work item", () => {
 
     expect(workItem.productLineId).toBe("catch-all");
   });
+
+  it("titles an untitled work item 'untitled project'", () => {
+    const workItem = createWorkItem({
+      id: "work-003",
+      title: "",
+    });
+
+    expect(workItem.title).toBe("untitled project");
+  });
 });
