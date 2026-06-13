@@ -9,6 +9,51 @@ A technology-agnostic, conceptual blueprint of this application, written for a c
 
 ---
 
+> ## ⚠ Correction notice — read before trusting any "accident — do not port" verdict
+>
+> This document mixes two things that read identically but are not the same: **extracted
+> domain facts** (what the legacy system does, with `file:line` citations — trustworthy) and
+> **rebuild opinions** (what a rebuild *should* do — judgment calls). The opinions are written
+> in the same authoritative voice as the facts ("accident — do not port", "domain law",
+> "non-negotiable"), and that has repeatedly led readers — humans and LLMs — to adopt the
+> opinions as facts and stop thinking. Treat this notice as overriding the body below wherever
+> they conflict.
+>
+> The engine behind the over-claiming is the **§0.5 test** ("would it survive a different
+> stack?"). The test is useful for separating domain from implementation, but **it proves too
+> much** — applied literally it also condemns TypeScript, Firestore, and every concrete choice.
+> It is especially wrong when applied to **delivery tactics** and to **affordances for the
+> documented fast/messy authoring workflow**, which it mislabels as accidents.
+>
+> **Two verdicts in this document are overruled** (full reasoning in `ROADMAP.md` §2):
+>
+> 1. **"The bake is an accident" (Part 0, §0.5, §3.1 #7, §3.4) — WRONG. Keep static
+>    materialization.** For a privacy-critical solo archive, baking is the *stronger* tactic:
+>    non-public data is physically absent from the read path, releases are atomic and
+>    rollback-able, and the build fails on bad data before any visitor sees it. The real
+>    accidents are narrower: the *manual* trigger (make it event-driven), the five-deep
+>    fallback cascade, and the machine-specific backup path.
+>
+> 2. **"The catch-all line is an accident; line must be a required FK" (§1.3, §2.4 #7) —
+>    OVERZEALOUS. Keep the catch-all.** The doc collapsed two different things: *inference into
+>    the catch-all* (a real accident — kill the keyword guessing) and *the catch-all as an
+>    explicit holding bucket for deliberately-uncategorized drafts* (legitimate domain, given
+>    DOMAIN_PRIMER §0's "entries created fast, fields left blank"). The opposite of *guessed* is
+>    *explicit-or-honestly-defaulted*, not *mandatory-at-creation*. The domain rule that
+>    actually holds: every item resolves to exactly one line, and the line is **never inferred
+>    from text**. Whether an unset line defaults to a catch-all bucket *(recommended — fits the
+>    fast-authoring reality)* or is required at creation is a **workflow judgment call, not a
+>    domain fact** — decide it deliberately.
+>
+> **How to read the rest of this doc:** treat every "accident — do not port" as a *claim to
+> re-derive*, not a command. Check it against `DOMAIN_PRIMER.md` and `BEHAVIOR_INVENTORY.md`
+> (the fact docs) and the real authoring workflow before acting on it. The genuinely-solid debt
+> findings still stand: inference cascades, name-based joins, per-record patch maps hardcoded in
+> code, the five-deep fallback cascade, duplicated slugify/markdown, and hardcoded secrets/foreign
+> paths.
+
+---
+
 ## Part 0 — The system in one breath
 
 This is a **personal build-archive and showcase**. One author ships a stream of *work items* — software projects, narrated videos, research writeups, and dated log entries — over time. The system catalogs that stream, groups it into product lines, cross-references it by technology and by narrative, and publishes it as a fast, crawlable public website plus machine-readable feeds. The original 100-day campaign is one presentation frame for that archive, not a domain rule: the same system should also work as a permanent portfolio that documents thoughts and projects for years.
@@ -31,6 +76,8 @@ This document exists to extract the **domain** (the *what* and the *why*) and di
 > **Would this survive if the author had picked a different stack on day one?**
 > - **Yes → domain.** Keep it; it constrains any rebuild. (The privacy boundary, work-item-as-atom, explicit grouping, the path-free public contracts.)
 > - **No — it only exists because of the specific stack, free-tier limits, or the solo-vibecoder workflow → accident.** A cleanroom *deletes* it; it does not lovingly re-implement it.
+>
+> **⚠ Caution (see Correction notice at top):** this test proves too much — it also condemns any concrete stack choice, and it mislabels *delivery tactics* (the bake) and *fast-authoring affordances* (the catch-all) as accidents. Re-derive each verdict; do not apply it mechanically.
 
 The 100-day framing fails this test as a domain invariant. It is a valuable editorial campaign and can remain as configurable presentation copy/counters, but the archive must not depend on a fixed 100-item limit, a countdown, or a campaign end date.
 
@@ -188,7 +235,7 @@ erDiagram
 **Entity notes (the conceptual contract, not the storage shape):**
 
 - **Work item** is the atom. Almost everything else exists to *group*, *classify*, or *enrich* work items. A work item can simultaneously be "a project" and "a video" — the *kind* is derived, not stored rigidly.
-- **Product line** is a coarse grouping ("which of my ongoing efforts is this part of"), now a **required FK** on every work item. The as-built model also keeps a catch-all bucket for items with no line; that bucket is an **accident — do not port** (it's a sink for inference misses, §2.5). With line captured at authoring time, there are no unresolved items and so no catch-all.
+- **Product line** is a coarse grouping ("which of my ongoing efforts is this part of"); every work item **always resolves to exactly one line** (set explicitly, or via the catch-all default — see correction below). The as-built model keeps a catch-all bucket for items with no line. **⚠ Corrected (see Correction notice at top): the catch-all is *not* an accident — keep it.** What is an accident is *inference into* the catch-all (keyword-guessing a line from text, §2.5); kill that. The catch-all as an explicit holding bucket for deliberately-uncategorized fast drafts is legitimate domain. The rule that holds: every item resolves to exactly one line and the line is never inferred from text; whether an unset line defaults to the catch-all (recommended) or is required at creation is a workflow judgment call.
 - **Series** is a finer grouping *within* a line (e.g. an episodic run). Optional. (The as-built `aliases[]` on series and technology is an **accident — do not port**; aliases exist only to support name-based matching, which §3.1 #5 deletes.)
 - **Technology** is a controlled vocabulary. A work item references it **by canonical ID only** — the display name lives on the technology record and is resolved at render. (The as-built work item carries a *second*, parallel list of free-text stack labels alongside the refs; that dual list is an **accident — do not port**. It exists only to paper over un-normalized legacy stack data. One list of refs; the canonical refs power all cross-cutting "what uses X" views.)
 - **Video bundle** is a rich, nested, **deliberately path-free** record describing a produced video — its segments, the visual style system used, recurring characters, cited sources, full transcript, and a production-cost/credits summary. It is the public-facing contract for the media side, intentionally decoupled from the raw production files it was derived from.
@@ -330,7 +377,7 @@ One append-only record per authoring write: `{ actor, client, operation, targetT
 6. The activity heatmap is computed from **ship dates of work items**, not from code-commit activity. Commit-based activity would misrepresent a portfolio that documents shipped artifacts, research, media, and notes, not only repository commits.
 
 **Classification & grouping**
-7. Every work item belongs to exactly one product line, **captured explicitly at authoring time** (a required FK). *(As-built, unresolved items fall to a catch-all bucket and empty lines are suppressed — both are accidents of runtime inference, §1.3/§2.5. With the FK required there are no unresolved items and no catch-all.)*
+7. Every work item belongs to exactly one product line, and **the line is never inferred from free text**. **⚠ Corrected (see Correction notice at top):** the original "required FK / no catch-all" wording overreached. Killing the runtime *inference* cascade is the real invariant (§2.5); keeping an explicit catch-all bucket for unset lines is legitimate and fits the fast-authoring reality (DOMAIN_PRIMER §0). Required-at-creation vs. default-to-catch-all is a workflow judgment call, not a domain fact.
 8. A work item may optionally belong to one series within its line.
 9. Every technology reference on a work item must resolve to the controlled vocabulary, or the build fails; the literal placeholder "other" is forbidden in stored data. *(As-built, stack is two parallel lists — free labels plus canonical refs; that duplication is an accident, §1.3. The invariant that survives is purely referential: refs resolve, no placeholders.)*
 10. A work item is treated as a *video* if it is explicitly typed so, carries video identifiers, or matches a produced video; otherwise it is a *project*. Kind is derived.
@@ -403,7 +450,7 @@ The current architecture is *functional and surprisingly resilient*, but it carr
 | 4 | **Two parallel data layers** (a live client layer and a build layer) with duplicated normalize/slug logic | Drift between the two; bugs fixed in one, not the other | A **single shared domain module** consumed by both authoring and rendering. One normalizer, one slugifier (today there are several subtly different ones). |
 | 5 | **Identity matching across systems by display name** (item↔video by title overlap; an external sync that matches by name) | Renames create duplicates; matching is probabilistic | Match only on **stable IDs**. Names are labels, never join keys. |
 | 6 | **Human-edited prose parsed by regex** in the media pipeline | Brittle; format drift breaks ingestion silently; "best-effort skip" hides data loss | Make the **authored source structured** (front-matter / a small schema) so ingestion is a parse, not a guess. The production tool emits the contract directly. |
-| 7 | **A whole publish apparatus (snapshot exporter, dirty-flag, publish-state ledger, manual rebuild) to keep a static site fresh** | The entire machine exists to work around one thing: a baked static site can't re-render itself when the store changes. It's an accident of the hosting choice, not a domain need — yet it's the system's most elaborate subsystem | **Question the bake, don't just automate it.** The domain invariant is only "reads are cheap and never touch the write store" (§0.5). A server with edge/incremental caching honors that with *no* exporter, *no* dirty-flag, *no* publish ledger. If you keep static baking for other reasons, *then* make it event-driven (a change/journal entry triggers rebuild+deploy and resets the flag) — but recognize that's optimizing an accident. See §3.4. |
+| 7 | **A whole publish apparatus (snapshot exporter, dirty-flag, publish-state ledger, manual rebuild) to keep a static site fresh** | The entire machine exists to work around one thing: a baked static site can't re-render itself when the store changes. It's an accident of the hosting choice, not a domain need — yet it's the system's most elaborate subsystem | **⚠ Overruled — see Correction notice at top: keep the bake; make only the *trigger* event-driven.** The bake itself is a sound (arguably stronger) delivery tactic; the genuine accidents are the *manual* trigger, the fallback cascade, and the machine path. Original text follows. **Question the bake, don't just automate it.** The domain invariant is only "reads are cheap and never touch the write store" (§0.5). A server with edge/incremental caching honors that with *no* exporter, *no* dirty-flag, *no* publish ledger. If you keep static baking for other reasons, *then* make it event-driven (a change/journal entry triggers rebuild+deploy and resets the flag) — but recognize that's optimizing an accident. See §3.4. |
 | 8 | **Inconsistent visibility semantics** (items require `=="public"`; supporting records use `!="private"`) | Easy to leak a record that was never explicitly marked | One **explicit visibility enum with a default-deny rule**, enforced at a single export gate for *all* collections. |
 | 9 | **Mutable module-level caches + mixed SDK trust levels** | Hidden state across a build; privileged creds reachable from rendering | Stateless data access with an explicit, scoped cache. Privileged export is a separate, isolated step that hands off only the sanitized snapshot. |
 | 10 | **Three UI paradigms** (static templates + one component-framework island style + one vanilla-scripting island style) | Cognitive overhead; duplicated patterns; inconsistent interactivity | Pick **one rendering model**: static-first HTML with a single, consistent islands approach for the few interactive surfaces (graph, filters, theme). |
@@ -455,7 +502,16 @@ flowchart LR
 5. **Eliminate machine-specific and instance-specific code.** No absolute personal paths, no per-record override maps, no name-based joins. These are the three recurring sources of fragility.
 6. **Keep the read side dumb and fast — that's the real invariant, not the bake.** Visitors should keep paying zero runtime cost; all intelligence runs ahead of the request. *How* you achieve that (static bake, incremental regeneration, edge cache) is a stack choice. Preserve the *property*, not the specific materialization machine that currently delivers it.
 
-## 3.4 The central accident: does materialization need to exist at all?
+## 3.4 Does materialization need to exist at all? (⚠ corrected — yes, it does)
+
+> **⚠ This section is overruled. See the Correction notice at the top of the document.** The
+> reasoning below is preserved as a record of the original (incorrect) argument. Its error is
+> the clearest instance of the §0.5 test proving too much: it condemns the bake — a legitimate
+> *delivery tactic* — as if it were a domain accident. The bake is the *stronger* tactic for a
+> privacy-critical archive (non-public data physically absent from the read path, atomic
+> rollback, build-time integrity gate). Keep static materialization; fix only the genuine
+> accidents around it (manual trigger → event-driven; drop the fallback cascade and the machine
+> path). Read the rest of this section with that correction in mind.
 
 Every other item in this part is a *local* cleanup. This one is structural, and it's the clearest application of the §0.5 test.
 
