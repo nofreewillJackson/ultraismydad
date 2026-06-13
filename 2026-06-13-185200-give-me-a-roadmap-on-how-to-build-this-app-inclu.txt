@@ -1,0 +1,2018 @@
+ ▐▛███▜▌   Claude Code v2.1.177
+▝▜█████▛▘  Opus 4.8 · Claude Pro
+  ▘▘ ▝▝    ~/dev/projects/ultraismydad
+
+
+❯ give me a roadmap on how to build this app. include how you manage to infer   
+  those decisions because i'm trying to learn. people reading this are juniors  
+  who need to reproduce your problem solving skills.                            
+
+● I'll start by understanding what "this app" actually is before giving you a
+  roadmap. Let me read the project's source-of-truth docs.
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● The instruction files are empty stubs — the real source of truth is in docs/.
+  Let me read those plus the existing code and the TDD playbook from the KB.
+
+  Read 3 files (ctrl+o to expand)
+
+● Now let me look at what already exists (code, tests, dev-log) and pull the TDD
+  playbook the memory references.
+
+  Read 4 files (ctrl+o to expand)
+
+● Let me read the CLEANROOM_SPEC (the architectural intent) and load the TDD
+  playbook from the KB.
+
+  Read 1 file (ctrl+o to expand)
+
+● Let me load the TDD playbook from the KB to ground the roadmap in the actual
+  methodology this project uses.
+
+  Called kb-filesystem (ctrl+o to expand)
+
+● I've now read everything that matters: the four docs/ artifacts
+  (DOMAIN_PRIMER, TECH_STACK, BEHAVIOR_INVENTORY, CLEANROOM_SPEC), the work
+  already done (src/domain/*, the tests, the dev-log), and the TDD playbook from
+  the KB. Here's the roadmap — written so you can see the reasoning, not just
+  the steps.
+
+  ---
+  Roadmap: rebuilding the build-in-public tracker
+
+  Part 0 — First, how I figured out what "this app" is (the transferable skill)
+
+  Before planning anything, I had to answer "what am I building?" I didn't guess
+  from the directory name. Here's the order I looked, and why:
+
+  1. I opened the instruction files first (CLAUDE.md → AGENTS.md). They were
+  empty stubs. Lesson: the canonical entry point is sometimes a dead end — don't
+  stop there, but do check it first so you know it's empty rather than
+  assuming.
+  2. I let the file tree tell me the shape. docs/ had four big markdown files
+  and a dev-log/; src/ had only two tiny domain files. That mismatch is the
+  whole story: this is a documentation-first, clean-room rebuild that has barely
+  started. The spec exists; the code doesn't yet.
+  3. I read the docs in dependency order, not alphabetical. DOMAIN_PRIMER (the
+  what), TECH_STACK (the physical facts), BEHAVIOR_INVENTORY (the testable 
+  checklist), then CLEANROOM_SPEC (the architecture + what to keep vs delete). I
+  read the spec last on purpose — it's the synthesis, and it only makes sense
+  once you've seen the raw rules it's reacting to.
+  4. I read the dev-log to find the current frontier. It told me exactly three
+  TDD cycles are done and why each decision was made. That's where the roadmap
+  has to continue from.
+  5. I loaded the methodology the project actually uses (the TDD playbook)
+  instead of applying generic "best practices." The roadmap has to obey this
+  project's rules, not my defaults.
+
+  ▎ The meta-skill: a roadmap is not invented, it's derived. You read the 
+  ▎ source-of-truth docs, find the current frontier, and let the project's own 
+  ▎ stated principles dictate the ordering. Most of my "decisions" below are me 
+  ▎ applying rules the docs already state — the skill is knowing which rule 
+  ▎ applies where.
+
+  ---
+  Part 1 — The one decision that shapes the entire roadmap
+
+  The CLEANROOM_SPEC hands you a single test (§0.5) and it governs everything:
+
+  ▎ Would this survive if the author had picked a different stack on day one?
+  ▎ Yes → it's domain, build it. No → it's an accident, delete it (don't 
+  ▎ lovingly re-implement it).
+
+  This is the most important thing for a junior to internalize: a rebuild is not
+  a port. The legacy app is ~80% machinery (snapshot exporter, dirty-flag
+  ledger, five-deep fallback cascade, keyword-inference cascades, per-record
+  patch maps). The spec's whole argument is that almost none of that is domain.
+
+  What survives the test (this is what you actually build):
+  - The privacy boundary — default-deny, enforced once. This is the spine of the
+  whole app.
+  - Explicit relationships — product line is a required FK captured at authoring
+  time, not guessed at read time.
+  - Path-free public contracts — the read snapshot (Contract A) and the video
+  bundle (Contract B).
+  - Derived presentation — slugs, timeline/day math, heatmap, counts, sort
+  order, embeddability. Pure functions.
+  - The media-ingestion ETL as a content-prep concern.
+
+  What you delete (do NOT port):
+  - The bake / snapshot-exporter / dirty-flag / publish-ledger apparatus as 
+  architecture (§3.4).
+  - Every inference cascade (line, series, video↔item title-matching).
+  - The catch-all product line, the dual stack lists, name aliases, the gated
+  state, snapshotHtml.
+  - Per-record override maps hardcoded in code; the foreign absolute backup
+  path; the three slugify copies.
+
+  ▎ How I inferred the roadmap's spine from this: if the privacy gate is the one
+  ▎ non-negotiable domain invariant, then it must be the first thing proven and
+  ▎ the thing every later phase routes through. The TDD playbook independently 
+  ▎ agrees (§10: trust-boundary tests come before happy-path). Two sources 
+  ▎ pointing at the same starting point = high confidence.
+
+  ---
+  Part 2 — The fixed frame vs. what emerges
+
+  The playbook's prime rule: macro-architecture is fixed, micro-design emerges.
+
+  Fixed (you don't get to TDD your way out of these):
+  - Clean Architecture dependency direction: domain → nothing, use-cases → 
+  domain, adapters/UI → use-cases. Business rules never live in routes,
+  components, ORM models, or scripts.
+  - Vertical slices: prove the thinnest meaningful end-to-end path early, so you
+  don't build "glass invariants" — rules that look right in memory but shatter
+  against real persistence.
+  - Owned infrastructure (your store, your filesystem) gets tested against real 
+  ephemeral infra; only third-party services get faked.
+
+  Emerges (one failing test at a time): every function signature, every
+  interface, every file split. You do not pre-plan the class diagram.
+
+  ▎ Why this matters for the roadmap: it tells me what the phases can't be. I 
+  ▎ can't have a "build all the domain entities" phase followed by "build all 
+  ▎ adapters" — that violates vertical slicing. Each phase has to be a slice 
+  ▎ that's provable and useful on its own.
+
+  ---
+  Part 3 — The phased roadmap
+
+  Each phase below states the goal, why it's here and now (the inference), and
+  the first behaviors to TDD. Phases are ordered by risk reduction and
+  dependency, which is how you should always order a build: do the thing that,
+  if wrong, invalidates the most other work.
+
+  Phase 1 — Pure domain core (in progress)
+
+  Goal: the entities and invariants as pure, in-memory functions. No I/O, no
+  framework.
+  Status: 3 cycles done — createWorkItem (defaults visibility→private,
+  line→catch-all) and selectPublicWorkItems.
+
+  Why first: it's the innermost layer; everything depends on it and it depends
+  on nothing, so it's the cheapest to get right and the most expensive to get
+  wrong. The privacy gate (selectPublicWorkItems) is already the trust boundary
+  — correct instinct.
+
+  Behaviors still to TDD here (pull straight from BEHAVIOR_INVENTORY §A, §N):
+  - Visibility rules for every collection — and unify them to default-deny (spec
+  §3.1 #8). Legacy used =="public" for items but !="private" for
+  lines/series/tech; the spec says pick one. Decision: explicit public/private, 
+  default-deny, everywhere.
+  - Slug derivation: lowercase → collapse non-alphanumerics → trim → cap at 80;
+  log-slug collision de-dup with a short id suffix. (One slugifier — legacy had
+  three that disagreed.)
+  - Timeline math: dayNum, shipped count, active-days; campaign counter only
+  when a campaign config supplies a target (the "100" is presentation, not a
+  domain limit — §0.5).
+  - Embeddability: host allow-list AND not-deny-list; inline demo HTML beats
+  external link.
+  - Sort order, technology rollups (resolve refs → count → group by category).
+
+  ▎ ⚠️ A correction I'd flag before continuing Phase 1. Cycle 2 defaulted 
+  ▎ productLineId to a catch-all constant. But CLEANROOM_SPEC §1.3 and §2.4 #7 
+  ▎ explicitly say catch-all is an accident — do not port; product line should 
+  ▎ be a required FK. The dev-log's reasoning ("keep authoring frictionless") is
+  ▎ reasonable, but it contradicts the source of truth. This is the single most
+  ▎ important teaching moment in the whole project: your own earlier code is 
+  ▎ not exempt from the domain-vs-accident test. The spec's intent is that the 
+  ▎ editor makes line selection mandatory (with inference offered as a one-time 
+  ▎ suggestion, never a runtime fallback), so there are no unresolved items and 
+  ▎ no catch-all sink. I'd revisit this with you (see Decisions below) before 
+  ▎ building more on top of it.
+
+  Phase 2 — First vertical slice: derisk the whole architecture
+
+  Goal: one behavior, end to end: persist a public work item → run it through 
+  the export gate → render its detail page.
+  Why now, before broadening the domain: the playbook warns against glass
+  invariants. Phase 1 rules look correct in memory; this slice proves they
+  survive contact with real persistence and a real renderer. It forces you to
+  define — minimally — a store port, one real ephemeral adapter (e.g., temp
+  SQLite or a temp-dir filesystem store), the export use case, and one render 
+  path. If the architecture is wrong, you find out now with one feature, not
+  after twenty.
+  Inference source: playbook §3 (vertical slice rule) directly.
+
+  Phase 3 — The read-model contract (Contract A) + the single export gate
+
+  Goal: one use case that takes the full operational dataset and emits the
+  sanitized read snapshot: privacy filter applied once, timestamps normalized,
+  arrays guaranteed, slugs deduped, non-public records absent entirely.
+  Why here: this is the testable embodiment of the one domain invariant. Spec
+  §3.3 #3: "a test that asserts no non-public record ever appears downstream."
+  Everything the delivery side reads comes from this contract, so it must exist
+  before you build readers.
+  Key behaviors: the §N trust-boundary checklist — private/gated/unset items
+  excluded; private logs hidden; the integrity validator that fails the build
+  when a public item's tech ref doesn't resolve or uses the forbidden other
+  placeholder.
+
+  Phase 4 — Delivery / rendering (the public read side)
+
+  Goal: the pre-rendered pages and feeds: home/graph, list, map, project, video,
+  log, research, plus rss.xml, llms.txt, robots.txt, sitemap, 404, and the
+  legacy redirects.
+  Why after Contract A: readers are pure consumers of the snapshot; they can't
+  be built before the contract they read. Test the logic, not the pixels
+  (playbook §12): log author-filter + empty states, embeddability rendering
+  decision, files-tab visibility, three-state file gating. Visual layout is
+  manual/snapshot verification.
+  Inference: BEHAVIOR_INVENTORY §G–K are this phase, almost line for line.
+
+  Phase 5 — Authoring surface + identity gate
+
+  Goal: the admin: Google SSO → allow-list authz (authenticated ≠ authorized; a
+  non-operator is force-signed-out), CRUD over items/lines/series/taxonomy, new 
+  items default private, explicit line/series/tech selection (the FK capture
+  that replaces inference).
+  Why this late: it's heavy on trust boundaries (do those first within the
+  phase, §10), and it depends on the store and domain being solid. It's also
+  where you delete inference by making relationships explicit at the point of
+  capture — which only makes sense once the read side proves what the
+  relationships are for.
+
+  Phase 6 — Media ingestion ETL (Contract B)
+
+  Goal: turn production artifacts into clean, path-free video bundles + index.
+  Why near-last and standalone: the spec calls it "conceptually separate" — it's
+  a parallel pipeline, not on the critical path of the main publish flow, so it
+  doesn't block anything else. Redesign, don't port: legacy parses human-edited
+  prose with regex (§3.1 #6); the rebuild makes the authored source structured
+  so ingestion is a parse, not a guess.
+
+  Phase 7 — The digital garden
+
+  Goal: file-based notes, wikilink resolution, backlinks, bounded transclusion,
+  and the graph analytics (communities, hubs, orphans, latent links).
+  Why it can float: it's self-contained (file-based, not in the store, its own
+  renderer). It has no dependency on Contract A, so it can be built any time
+  after Phase 1 — even in parallel by another person. I place it late only
+  because it's the most isolated and lowest-risk.
+
+  ▎ The cross-cutting decision baked into every phase: store relationships, 
+  ▎ derive presentation (spec §3.3 #1). When a phase needs a relationship (line,
+  ▎ series, video↔item) → it's a stored FK. When it needs a number or a label 
+  ▎ (day count, heatmap, slug, sort) → it's a derived pure function. This one 
+  ▎ rule resolves most "where does this go?" questions before you even ask them.
+
+  ---
+  Part 4 — How to choose the next test inside any phase
+
+  The roadmap gives you phases; the playbook gives you the within-phase loop.
+  For a junior, this is the actual day-to-day skill:
+
+  1. Trust boundaries before happy paths. If the behavior touches
+  privacy/auth/integrity, its rejection test comes first (§10).
+  2. Pick the simplest unproven behavior off the BEHAVIOR_INVENTORY checklist —
+  that file is literally a pre-made behavior inventory, one checkbox = one TDD
+  cycle.
+  3. RED → GREEN → REFACTOR, and actually run it. Write one failing test,
+  observe it fail for the right reason (missing behavior, not a typo), write the
+  minimum to pass, then refactor under green. Never write test + impl in one
+  step.
+  4. New edge cases get added to the list, not implemented on the spot.
+
+  ▎ Why I'm handing you the heuristic instead of a 200-line task list: the 
+  ▎ playbook's core claim is "micro-design emerges." A roadmap that 
+  ▎ pre-specified every test would itself violate the method you're learning. 
+  ▎ The phases are the fixed frame; the tests emerge.
+
+  ---
+  Part 5 — Decisions I'm flagging (the genuine forks)
+
+  These are the places the spec deliberately leaves a choice, or where existing
+  code disagrees with the spec. I have recommendations, but they change what
+  gets built, so you should weigh in:
+
+  1. The catch-all product line (Phase 1 correction). Existing code defaults to
+  it; spec says required FK, no catch-all. My rec: make line required at the
+  authoring boundary, drop the catch-all default. This is the one I'd settle 
+  before writing more domain code.
+  2. Bake vs. server (spec §3.4 — the big one). Do you keep static generation
+  (then make the bake event-driven), or use a cached server and dissolve the
+  entire snapshot/ledger apparatus? My rec: dissolve it unless you have a
+  hosting reason to bake — the spec argues hard that the bake is an accident.
+  This is the single decision that most reshapes Phases 2–3.
+  3. Log-entry visibility (DOMAIN_PRIMER §4.2). Legacy was inconsistent
+  (!="private" live vs =="public" baked). My rec: explicit "public" to publish,
+  matching the unified default-deny rule.
+  4. Sort order (spec §1.3). Manual sortOrder vs. derive-by-recency. My rec:
+  derive by recency; if manual is truly wanted, it's one view setting, never a
+  per-record field.
+
+  ---
+  Want me to (a) settle decision #1 and #2 with you now and then continue the
+  TDD cycle from where the dev-log left off, or (b) write this roadmap into
+  docs/ as a committed artifact first? I'd lean toward settling #1 before any
+  more code lands, since everything in Phase 1 builds on it.
+
+✻ Worked for 3m 4s
+
+❯ write this roadmap. but i think the cleanroom spec was too overzealous in     
+  assuming that bake was an accident. please think instead of blindly asking    
+  questions                                                                     
+
+● You're right, and it's worth saying why you're right rather than just agreeing
+  — because the reasoning is the part a junior needs to copy. Let me think it
+  through, commit to a position, and write the roadmap with that position baked
+  in.
+
+  Why the spec is overzealous about the bake
+
+  The CLEANROOM_SPEC runs every mechanism through one test (§0.5): "would this 
+  survive a different day-one stack? No → accident." Applied to the bake, it
+  concludes "a cached server dissolves it, therefore accident."
+
+  The flaw: that test proves too much. Firestore wouldn't survive a different
+  stack. TypeScript wouldn't. The test is meant to separate domain from
+  implementation — but "bake vs. server" isn't domain-vs-implementation, it's a
+  choice between two delivery tactics, and the spec itself concedes this in §3.3
+  #6: "How you achieve cheap reads (static bake, incremental regeneration, edge
+  cache) is a stack choice. Preserve the property, not the machine." So the
+  spec simultaneously calls baking a valid tactic and an accident-to-delete.
+  That contradiction is the tell.
+
+  What the spec misses is that, for this specific domain, baking is not neutral
+  — it's arguably the stronger tactic, because of what the domain says matters
+  most:
+
+  - The spec's own #1 non-negotiable invariant is a hard privacy boundary. A
+  bake with an export-time filter makes non-public data physically absent from
+  the delivery artifact — there is no request-time code path that could leak it,
+  because there's no live store on the read path at all. The spec's proposed
+  alternative moves that gate to a runtime query filter, which is strictly
+  weaker: one missed WHERE visibility='public' and you leak the thing the domain
+  cares about most.
+  - Pre-publish integrity gate. build:strict refuses to ship when the taxonomy
+  doesn't resolve. A live server renders the broken record to a real visitor.
+  Baking moves failure left.
+  - Atomic, immutable, rollback-able releases and zero runtime surface (no
+  server, no DB creds on the read path) — durable properties, not accidents.
+
+  The steelman for the spec's side is incremental regeneration (ISR): "automatic
+  freshness, no exporter." But ISR still runs render code against the live
+  store on revalidation — the read path does touch the write store, just less
+  often — and it buys freshness latency, a metric a personal archive that
+  publishes a few times a week barely cares about, at the cost of the physical
+  privacy + atomic-rollback + pre-publish-validation properties it cares about a
+  lot.
+
+  So: the spec conflated two different things. The bake (delivery tactic) is
+  sound — keep it. The cruft around it — the manual trigger, the five-deep
+  fallback cascade with a hardcoded foreign absolute path, the unwired
+  dirty-flag — those are the real accidents. Fix those, keep the bake, and make
+  the trigger event-driven. The user's instinct is the correct refinement.
+
+  Now let me write the roadmap with that position in it.
+
+● Write(docs/ROADMAP.md)
+  ⎿  Wrote 249 lines to docs/ROADMAP.md
+       1 # ROADMAP.md — Building the tracker, with the reasoning shown
+       3 > A build plan for the clean-room rebuild, written so a junior c
+         an reproduce the
+         at** to build, **why it
+          to test. Where this
+       6 > document overrules a sibling doc, it says so and explains why.
+       8 > Companions: `DOMAIN_PRIMER.md` (the rules), `TECH_STACK.md` (p
+         hysical facts/dead code),
+         PEC.md` (the agnostic
+         he knowledge base.
+     … +382 lines (ctrl+o to expand)
+
+● Written to docs/ROADMAP.md. Now let me record the one durable decision that
+  overrides a checked-in doc, so it survives to the next session.
+
+  Recalled 1 memory, wrote 2 memories (ctrl+o to expand)
+
+● Done. Here's what I wrote and the thinking behind it.
+
+  What landed
+
+  - docs/ROADMAP.md — the full roadmap, with reasoning shown at every step (for
+  the juniors).
+  - Memory — recorded the bake decision so it survives to the next session,
+  since it overrules a checked-in doc.
+
+  The substantive change you prompted
+
+  You were right that the spec over-applied its own test. The roadmap now has a
+  dedicated §2 "On the bake: a correction to CLEANROOM_SPEC §3.4" that argues:
+
+  1. The §0.5 "would it survive a different stack?" test proves too much — it
+  would also kill TypeScript and Firestore. Bake-vs-server isn't
+  domain-vs-implementation; it's a choice between two delivery tactics, which
+  the spec itself concedes in §3.3 #6 and then contradicts.
+  2. For this domain, baking is the stronger tactic, because the #1 invariant is
+  a hard privacy boundary — a bake makes non-public data physically absent from
+  the read path, while a cached server reduces it to a runtime query filter
+  (one missed WHERE = a leak of the thing the domain cares about most). Same
+  story for atomic rollback and pre-publish integrity gating.
+  3. The genuine accidents the spec spotted are real but separable: the manual
+  trigger, the five-deep fallback cascade, the machine-specific path. Keep the
+  bake; fix those; make the trigger event-driven.
+
+  The teaching point I made explicit in the doc: the skill isn't just applying a
+  rule, it's noticing when a doc's conclusion doesn't follow from its own rule.
+
+  Two decisions I committed to rather than asking
+
+  Per your "think instead of blindly asking":
+  - Catch-all line → removed. The existing Phase-1 code defaults productLineId
+  to catch-all, which directly contradicts CLEANROOM_SPEC §1.3/§2.4 #7 (line is
+  a required FK). I flagged it as a correction to make before extending Phase 1,
+  with the lesson that your own earlier code isn't exempt from the
+  domain-vs-accident test.
+  - Sort by recency, visibility unified to default-deny — both resolved with
+  reasoning in §6.
+
+  I left exactly one thing genuinely open (log-entry visibility on the legacy
+  live path), because that one is a real product call, not a coin-flip.
+
+  The natural next move is the Phase-1 catch-all correction — a proper RED→GREEN
+  cycle that makes productLineId required and removes the default. Want me to
+  do that?
+
+✻ Brewed for 3m 25s
+
+❯ can you ensure that CLEANROOM_SPEC.md no longer confuses people and is        
+  updated? it's making too many overzealous claims as you said. it feels like a 
+  cancer that keeps confusing LLMs like you. I mean, why did you even decide    
+  that productLineID would be required? is it because of CLEANROOM_SPEC.md?     
+  because if you made that decision due to CLEANROOM_SPEC.md that is exactly    
+  the reason why i think that's a cancer                                        
+
+● This is the right challenge, and the honest answer is uncomfortable: yes, I 
+  decided productLineId should be required because CLEANROOM_SPEC said so. I
+  cited §1.3/§2.4 #7 as the authority and never re-derived it. That's exactly
+  the failure mode you're pointing at — I treated the spec's opinion as an
+  extracted fact. Let me actually think it through now, then fix the doc.
+
+  Re-deriving the catch-all decision from scratch
+
+  The first dev-log cycle (written before I got here) reasoned: entries are
+  created fast with blanks (DOMAIN_PRIMER §0 literally says "entries created
+  fast, fields left blank"), and the system must always resolve an item to
+  exactly one line for grouping. So a catch-all is a holding bucket that
+  preserves the invariant without forcing eager categorization. That reasoning 
+  is better-grounded in the documented domain than the spec's.
+
+  Run the spec's own §0.5 test on the catch-all honestly: would a holding bucket
+  for deliberately-uncategorized drafts survive a stack change? Yes — it
+  answers a genuine domain tension (fast/messy authoring + always-grouped
+  reads). So by its own test, it's domain, not accident.
+
+  What the spec did was collapse two different things: inference into the
+  catch-all (keyword-guessing a line from text — that genuinely is an accident,
+  kill it) and the catch-all as an honest default bucket (legitimate). It threw
+  out both. The opposite of guessed is explicit-or-honestly-defaulted, not
+  mandatory-at-creation.
+
+  So I was wrong. Catch-all stays; only the inference dies. Whether to instead
+  require the line at creation is a workflow judgment call — defensible if you
+  choose to enforce eager categorization — but it is not a domain fact, and I
+  shouldn't have presented it as one.
+
+  Now let me fix the spec so it stops doing this to the next reader. I'll add a
+  loud correction notice up top and flag each overzealous claim inline, while
+  preserving the genuinely-solid findings.
+
+● Update(docs/CLEANROOM_SPEC.md)
+  ⎿  Added 45 lines
+       9  
+      10  ---
+      11  
+      12 +> ## ⚠ Correction notice — read before trusting any "accident —
+         + do not port" verdict                                          
+      13 +>                                                              
+      14 +> This document mixes two things that read identically but are 
+         +not the same: **extracted                                      
+      15 +> domain facts** (what the legacy system does, with `file:line`
+         + citations — trustworthy) and                                  
+      16 +> **rebuild opinions** (what a rebuild *should* do — judgment c
+         +alls). The opinions are written                                
+      17 +> in the same authoritative voice as the facts ("accident — do 
+         +not port", "domain law",                                       
+      18 +> "non-negotiable"), and that has repeatedly led readers — huma
+         +ns and LLMs — to adopt the                                     
+      19 +> opinions as facts and stop thinking. Treat this notice as ove
+         +rriding the body below wherever                                
+      20 +> they conflict.                                               
+      21 +>                                                              
+      22 +> The engine behind the over-claiming is the **§0.5 test** ("wo
+         +uld it survive a different                                     
+      23 +> stack?"). The test is useful for separating domain from imple
+         +mentation, but **it proves too                                 
+      24 +> much** — applied literally it also condemns TypeScript, Fires
+         +tore, and every concrete choice.                               
+      25 +> It is especially wrong when applied to **delivery tactics** a
+         +nd to **affordances for the                                    
+      26 +> documented fast/messy authoring workflow**, which it mislabel
+         +s as accidents.                                                
+      27 +>                                                              
+      28 +> **Two verdicts in this document are overruled** (full reasoni
+         +ng in `ROADMAP.md` §2):                                        
+      29 +>                                                              
+      30 +> 1. **"The bake is an accident" (Part 0, §0.5, §3.1 #7, §3.4) 
+         +— WRONG. Keep static                                           
+      31 +>    materialization.** For a privacy-critical solo archive, ba
+         +king is the *stronger* tactic:                                 
+      32 +>    non-public data is physically absent from the read path, r
+         +eleases are atomic and                                         
+      33 +>    rollback-able, and the build fails on bad data before any 
+         +visitor sees it. The real                                      
+      34 +>    accidents are narrower: the *manual* trigger (make it even
+         +t-driven), the five-deep                                       
+      35 +>    fallback cascade, and the machine-specific backup path.   
+      36 +>                                                              
+      37 +> 2. **"The catch-all line is an accident; line must be a requi
+         +red FK" (§1.3, §2.4 #7) —                                      
+      38 +>    OVERZEALOUS. Keep the catch-all.** The doc collapsed two d
+         +ifferent things: *inference into                               
+      39 +>    the catch-all* (a real accident — kill the keyword guessin
+         +g) and *the catch-all as an                                    
+      40 +>    explicit holding bucket for deliberately-uncategorized dra
+         +fts* (legitimate domain, given                                 
+      41 +>    DOMAIN_PRIMER §0's "entries created fast, fields left blan
+         +k"). The opposite of *guessed* is                              
+      42 +>    *explicit-or-honestly-defaulted*, not *mandatory-at-creati
+         +on*. The domain rule that                                      
+      43 +>    actually holds: every item resolves to exactly one line, a
+         +nd the line is **never inferred                                
+      44 +>    from text**. Whether an unset line defaults to a catch-all
+         + bucket *(recommended — fits the                               
+      45 +>    fast-authoring reality)* or is required at creation is a *
+         +*workflow judgment call, not a                                 
+      46 +>    domain fact** — decide it deliberately.                   
+      47 +>                                                              
+      48 +> **How to read the rest of this doc:** treat every "accident —
+         + do not port" as a *claim to                                   
+      49 +> re-derive*, not a command. Check it against `DOMAIN_PRIMER.md
+         +` and `BEHAVIOR_INVENTORY.md`                                  
+      50 +> (the fact docs) and the real authoring workflow before acting
+         + on it. The genuinely-solid debt                               
+      51 +> findings still stand: inference cascades, name-based joins, p
+         +er-record patch maps hardcoded in                              
+      52 +> code, the five-deep fallback cascade, duplicated slugify/mark
+         +down, and hardcoded secrets/foreign                            
+      53 +> paths.                                                       
+      54 +                                                               
+      55 +---                                                            
+      56 +                                                               
+      57  ## Part 0 — The system in one breath
+      58  
+      59  This is a **personal build-archive and showcase**. One author s
+          hips a stream of *work items* — software projects, narrated vid
+          eos, research writeups, and dated log entries — over time. The 
+          system catalogs that stream, groups it into product lines, cros
+          s-references it by technology and by narrative, and publishes i
+          t as a fast, crawlable public website plus machine-readable fee
+          ds. The original 100-day campaign is one presentation frame for
+           that archive, not a domain rule: the same system should also w
+          ork as a permanent portfolio that documents thoughts and projec
+          ts for years.
+
+● Now the inline flags at each overzealous claim:
+
+● Update(docs/CLEANROOM_SPEC.md)
+  ⎿  Added 2 lines
+      76  > **Would this survive if the author had picked a different sta
+          ck on day one?**
+      77  > - **Yes → domain.** Keep it; it constrains any rebuild. (The 
+          privacy boundary, work-item-as-atom, explicit grouping, the pat
+          h-free public contracts.)
+      78  > - **No — it only exists because of the specific stack, free-t
+          ier limits, or the solo-vibecoder workflow → accident.** A clea
+          nroom *deletes* it; it does not lovingly re-implement it.
+      79 +>                                                              
+      80 +> **⚠ Caution (see Correction notice at top):** this test prove
+         +s too much — it also condemns any concrete stack choice, and it
+         + mislabels *delivery tactics* (the bake) and *fast-authoring af
+         +fordances* (the catch-all) as accidents. Re-derive each verdict
+         +; do not apply it mechanically.                                
+      81  
+      82  The 100-day framing fails this test as a domain invariant. It i
+          s a valuable editorial campaign and can remain as configurable 
+          presentation copy/counters, but the archive must not depend on 
+          a fixed 100-item limit, a countdown, or a campaign end date.
+      83  
+
+● Update(docs/CLEANROOM_SPEC.md)
+  ⎿  Added 1 line, removed 1 line
+      235  **Entity notes (the conceptual contract, not the storage shape
+           ):**
+      236  
+      237  - **Work item** is the atom. Almost everything else exists to 
+           *group*, *classify*, or *enrich* work items. A work item can s
+           imultaneously be "a project" and "a video" — the *kind* is der
+           ived, not stored rigidly.
+      238 -- **Product line** is a coarse grouping ("which of my ongoing 
+          -efforts is this part of"), now a **required FK** on every work
+          - item. The as-built model also keeps a catch-all bucket for it
+          -ems with no line; that bucket is an **accident — do not port**
+          - (it's a sink for inference misses, §2.5). With line captured 
+          -at authoring time, there are no unresolved items and so no cat
+          -ch-all.                                                       
+      238 +- **Product line** is a coarse grouping ("which of my ongoing 
+          +efforts is this part of"), now a **required FK** on every work
+          + item. The as-built model also keeps a catch-all bucket for it
+          +ems with no line. **⚠ Corrected (see Correction notice at top)
+          +: the catch-all is *not* an accident — keep it.** What is an a
+          +ccident is *inference into* the catch-all (keyword-guessing a 
+          +line from text, §2.5); kill that. The catch-all as an explicit
+          + holding bucket for deliberately-uncategorized fast drafts is 
+          +legitimate domain. The rule that holds: every item resolves to
+          + exactly one line and the line is never inferred from text; wh
+          +ether an unset line defaults to the catch-all (recommended) or
+          + is required at creation is a workflow judgment call.         
+      239  - **Series** is a finer grouping *within* a line (e.g. an epis
+           odic run). Optional. (The as-built `aliases[]` on series and t
+           echnology is an **accident — do not port**; aliases exist only
+            to support name-based matching, which §3.1 #5 deletes.)
+      240  - **Technology** is a controlled vocabulary. A work item refer
+           ences it **by canonical ID only** — the display name lives on 
+           the technology record and is resolved at render. (The as-built
+            work item carries a *second*, parallel list of free-text stac
+           k labels alongside the refs; that dual list is an **accident —
+            do not port**. It exists only to paper over un-normalized leg
+           acy stack data. One list of refs; the canonical refs power all
+            cross-cutting "what uses X" views.)
+      241  - **Video bundle** is a rich, nested, **deliberately path-free
+           ** record describing a produced video — its segments, the visu
+           al style system used, recurring characters, cited sources, ful
+           l transcript, and a production-cost/credits summary. It is the
+            public-facing contract for the media side, intentionally deco
+           upled from the raw production files it was derived from.
+● Update(docs/CLEANROOM_SPEC.md)
+  ⎿  Added 1 line, removed 1 line
+      377  6. The activity heatmap is computed from **ship dates of work 
+           items**, not from code-commit activity. Commit-based activity 
+           would misrepresent a portfolio that documents shipped artifact
+           s, research, media, and notes, not only repository commits.
+      378  
+      379  **Classification & grouping**
+      380 -7. Every work item belongs to exactly one product line, **capt
+          -ured explicitly at authoring time** (a required FK). *(As-buil
+          -t, unresolved items fall to a catch-all bucket and empty lines
+          - are suppressed — both are accidents of runtime inference, §1.
+          -3/§2.5. With the FK required there are no unresolved items and
+          - no catch-all.)*                                              
+      380 +7. Every work item belongs to exactly one product line, and **
+          +the line is never inferred from free text**. **⚠ Corrected (se
+          +e Correction notice at top):** the original "required FK / no 
+          +catch-all" wording overreached. Killing the runtime *inference
+          +* cascade is the real invariant (§2.5); keeping an explicit ca
+          +tch-all bucket for unset lines is legitimate and fits the fast
+          +-authoring reality (DOMAIN_PRIMER §0). Required-at-creation vs
+          +. default-to-catch-all is a workflow judgment call, not a doma
+          +in fact.                                                      
+      381  8. A work item may optionally belong to one series within its 
+           line.
+      382  9. Every technology reference on a work item must resolve to t
+           he controlled vocabulary, or the build fails; the literal plac
+           eholder "other" is forbidden in stored data. *(As-built, stack
+            is two parallel lists — free labels plus canonical refs; that
+            duplication is an accident, §1.3. The invariant that survives
+            is purely referential: refs resolve, no placeholders.)*
+      383  10. A work item is treated as a *video* if it is explicitly ty
+           ped so, carries video identifiers, or matches a produced video
+           ; otherwise it is a *project*. Kind is derived.
+
+● Update(docs/CLEANROOM_SPEC.md)
+  ⎿  Added 1 line, removed 1 line
+      450  | 4 | **Two parallel data layers** (a live client layer and a 
+           build layer) with duplicated normalize/slug logic | Drift betw
+           een the two; bugs fixed in one, not the other | A **single sha
+           red domain module** consumed by both authoring and rendering. 
+           One normalizer, one slugifier (today there are several subtly 
+           different ones). |
+      451  | 5 | **Identity matching across systems by display name** (it
+           em↔video by title overlap; an external sync that matches by na
+           me) | Renames create duplicates; matching is probabilistic | M
+           atch only on **stable IDs**. Names are labels, never join keys
+           . |
+      452  | 6 | **Human-edited prose parsed by regex** in the media pipe
+           line | Brittle; format drift breaks ingestion silently; "best-
+           effort skip" hides data loss | Make the **authored source stru
+           ctured** (front-matter / a small schema) so ingestion is a par
+           se, not a guess. The production tool emits the contract direct
+           ly. |
+      453 -| 7 | **A whole publish apparatus (snapshot exporter, dirty-fl
+          -ag, publish-state ledger, manual rebuild) to keep a static sit
+          -e fresh** | The entire machine exists to work around one thing
+          -: a baked static site can't re-render itself when the store ch
+          -anges. It's an accident of the hosting choice, not a domain ne
+          -ed — yet it's the system's most elaborate subsystem | **Questi
+          -on the bake, don't just automate it.** The domain invariant is
+          - only "reads are cheap and never touch the write store" (§0.5)
+          -. A server with edge/incremental caching honors that with *no*
+          - exporter, *no* dirty-flag, *no* publish ledger. If you keep s
+          -tatic baking for other reasons, *then* make it event-driven (a
+          - change/journal entry triggers rebuild+deploy and resets the f
+          -lag) — but recognize that's optimizing an accident. See §3.4. 
+          -|                                                             
+      453 +| 7 | **A whole publish apparatus (snapshot exporter, dirty-fl
+          +ag, publish-state ledger, manual rebuild) to keep a static sit
+          +e fresh** | The entire machine exists to work around one thing
+          +: a baked static site can't re-render itself when the store ch
+          +anges. It's an accident of the hosting choice, not a domain ne
+          +ed — yet it's the system's most elaborate subsystem | **⚠ Over
+          +ruled — see Correction notice at top: keep the bake; make only
+          + the *trigger* event-driven.** The bake itself is a sound (arg
+          +uably stronger) delivery tactic; the genuine accidents are the
+          + *manual* trigger, the fallback cascade, and the machine path.
+          + Original text follows. **Question the bake, don't just automa
+          +te it.** The domain invariant is only "reads are cheap and nev
+          +er touch the write store" (§0.5). A server with edge/increment
+          +al caching honors that with *no* exporter, *no* dirty-flag, *n
+          +o* publish ledger. If you keep static baking for other reasons
+          +, *then* make it event-driven (a change/journal entry triggers
+          + rebuild+deploy and resets the flag) — but recognize that's op
+          +timizing an accident. See §3.4. |                             
+      454  | 8 | **Inconsistent visibility semantics** (items require `==
+           "public"`; supporting records use `!="private"`) | Easy to lea
+           k a record that was never explicitly marked | One **explicit v
+           isibility enum with a default-deny rule**, enforced at a singl
+           e export gate for *all* collections. |
+      455  | 9 | **Mutable module-level caches + mixed SDK trust levels**
+            | Hidden state across a build; privileged creds reachable fro
+           m rendering | Stateless data access with an explicit, scoped c
+           ache. Privileged export is a separate, isolated step that hand
+           s off only the sanitized snapshot. |
+      456  | 10 | **Three UI paradigms** (static templates + one componen
+           t-framework island style + one vanilla-scripting island style)
+            | Cognitive overhead; duplicated patterns; inconsistent inter
+           activity | Pick **one rendering model**: static-first HTML wit
+           h a single, consistent islands approach for the few interactiv
+           e surfaces (graph, filters, theme). |
+
+● Now the §3.4 heading — the "central accident" framing itself is the worst
+  offender:
+
+● Update(docs/CLEANROOM_SPEC.md)
+  ⎿  Added 10 lines, removed 1 line
+      502  5. **Eliminate machine-specific and instance-specific code.** 
+           No absolute personal paths, no per-record override maps, no na
+           me-based joins. These are the three recurring sources of fragi
+           lity.
+      503  6. **Keep the read side dumb and fast — that's the real invari
+           ant, not the bake.** Visitors should keep paying zero runtime 
+           cost; all intelligence runs ahead of the request. *How* you ac
+           hieve that (static bake, incremental regeneration, edge cache)
+            is a stack choice. Preserve the *property*, not the specific 
+           materialization machine that currently delivers it.
+      504  
+      505 -## 3.4 The central accident: does materialization need to exis
+          -t at all?                                                     
+      505 +## 3.4 Does materialization need to exist at all? (⚠ corrected
+          + — yes, it does)                                              
+      506  
+      507 +> **⚠ This section is overruled. See the Correction notice at 
+          +the top of the document.** The                                
+      508 +> reasoning below is preserved as a record of the original (in
+          +correct) argument. Its error is                               
+      509 +> the clearest instance of the §0.5 test proving too much: it 
+          +condemns the bake — a legitimate                              
+      510 +> *delivery tactic* — as if it were a domain accident. The bak
+          +e is the *stronger* tactic for a                              
+      511 +> privacy-critical archive (non-public data physically absent 
+          +from the read path, atomic                                    
+      512 +> rollback, build-time integrity gate). Keep static materializ
+          +ation; fix only the genuine                                   
+      513 +> accidents around it (manual trigger → event-driven; drop the
+          + fallback cascade and the machine                             
+      514 +> path). Read the rest of this section with that correction in
+          + mind.                                                        
+      515 +                                                              
+      516  Every other item in this part is a *local* cleanup. This one i
+           s structural, and it's the clearest application of the §0.5 te
+           st.
+      517  
+      518  The as-built system is organized around a **bake**: read the m
+           utable store, freeze it into a snapshot, render static artifac
+           ts, serve those. Around that bake grew an entire support appar
+           atus — the snapshot exporter, the privacy filter as an export 
+           step, the publish-state ledger (dirty-flag + pending count), t
+           he change journal as a would-be trigger, and the five-deep sou
+           rce-fallback cascade. Parts 1 and 2 describe all of it in deta
+           il because it is genuinely most of the code.
+
+● Now I need to fix ROADMAP.md — I wrote the wrong catch-all decision into it
+  too. Fixing all three places:
+
+● Update(docs/ROADMAP.md)
+  ⎿  Added 1 line, removed 1 line
+      43  | Survives the test → **build it** | Fails the test → **delete 
+          it** |
+      44  |---|---|
+      45  | The **privacy boundary** (default-deny, enforced once) | The 
+          **inference cascades** (line, series, video↔item title-matching
+          ) |
+      46 -| **Explicit relationships** (product line = required FK at aut
+         -horing) | The **catch-all** line, **dual stack lists**, name `a
+         -liases`, `gated`, `snapshotHtml` |                             
+      46 +| **Explicit relationships** (line is set or defaults to catch-
+         +all — never *inferred* from text) | The **inference cascade** t
+         +hat guesses a line, **dual stack lists**, name `aliases`, `gate
+         +d`, `snapshotHtml` |                                           
+      47  | **Path-free public contracts** (read snapshot, video bundle) 
+          | **Per-record patch maps** hardcoded in code (thumbnails, stac
+          k remaps, ref aliases) |
+      48  | **Derived presentation** (slugs, day math, heatmap, counts, s
+          ort, embeddability) | The **five-deep fallback cascade** + the 
+          **machine-specific absolute path** |
+      49  | The **media-ingestion ETL** as a content-prep concern | The *
+          *manual** publish trigger; the **unwired dirty-flag** |
+
+● Update(docs/ROADMAP.md)
+  ⎿  Added 11 lines, removed 8 lines
+      145  - Embeddability (host allow-list AND not-deny-list; inline dem
+           o HTML beats external link).
+      146  - Sort order; technology rollups (resolve refs → count → group
+            by category).
+      147  
+      148 -> **⚠ Correction to carry out before extending Phase 1.** Cycl
+          -e 2 defaulted `productLineId`                                 
+      149 -> to a `catch-all` constant. CLEANROOM_SPEC §1.3 / §2.4 #7 say
+          - catch-all is an **accident —                                 
+      150 -> do not port**; product line is a **required FK** captured at
+          - authoring time, with inference                               
+      151 -> demoted to a one-time editor *suggestion*, never a runtime f
+          -allback. The dev-log's                                        
+      152 -> "frictionless authoring" rationale is reasonable but contrad
+          -icts the source of truth.                                     
+      153 -> **Decision (taken, not deferred):** make line required at th
+          -e creation boundary; remove the                               
+      154 -> catch-all default. The lesson for juniors: *your own earlier
+          - code is not exempt from the                                  
+      155 -> domain-vs-accident test.*                                   
+      148 +> **⚠ Note on the catch-all (a worked example of *not* trustin
+          +g a spec verdict).** CLEANROOM_SPEC                           
+      149 +> §1.3 / §2.4 #7 call the catch-all an "accident — do not port
+          +" and demand a required FK. That                              
+      150 +> verdict is **overzealous and is now overruled** (see CLEANRO
+          +OM_SPEC's Correction notice). The                             
+      151 +> spec collapsed two things: *inference into* the catch-all (k
+          +eyword-guessing a line from text —                            
+      152 +> a real accident, kill it) and *the catch-all as an explicit 
+          +default bucket* for fast,                                     
+      153 +> deliberately-uncategorized drafts (legitimate, given DOMAIN_
+          +PRIMER §0's "entries created fast,                            
+      154 +> fields left blank"). **Decision:** keep `createWorkItem`'s c
+          +atch-all default; the real Phase-1                            
+      155 +> work is to ensure the line is **never inferred from free tex
+          +t** at read time. Requiring the                               
+      156 +> line at creation instead is a defensible *workflow* choice, 
+          +but it's a judgment call, not a                               
+      157 +> domain fact. The lesson for juniors: a spec's confident "acc
+          +ident — do not port" is a *claim                              
+      158 +> to re-derive*, not a command — re-check it against the fact 
+          +docs and the real workflow.                                   
+      159  
+      160  ### Phase 2 — First vertical slice, through the bake
+      161  **Goal:** one behavior end to end — *persist a public work ite
+           m → run it through the export
+
+● Update(docs/ROADMAP.md)
+  ⎿  Added 3 lines, removed 1 line
+      239  Resolved in this document (with reasoning above), recorded so 
+           they aren't re-litigated:
+      240  
+      241  - **Bake vs. server → keep the bake**, event-driven, privacy f
+           ilter at export (§2).
+      242 -- **Catch-all line → removed**; product line is a required FK 
+          -(Phase 1 correction).                                         
+      242 +- **Catch-all line → kept** as an explicit default bucket; wha
+          +t dies is *inference of the line                              
+      243 +  from text*, not the bucket. Required-at-creation is a defens
+          +ible workflow alternative but not                             
+      244 +  a domain requirement (Phase 1 note).                        
+      245  - **Visibility → one default-deny rule** across all collection
+           s (Phase 1).
+      246  - **Sort order → derive by recency**; if manual control is eve
+           r truly wanted it is one *view*
+      247    setting honored by every surface, never a per-record field h
+           alf the renderers override
+
+● Now fix the memory file, which carried the wrong catch-all conclusion:
+
+  Wrote 2 memories (ctrl+o to expand)
+
+● Let me verify the spec is now internally coherent — no un-flagged "required FK
+  / accident" assertions left dangling:
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● One spot still opens with the loaded "required FK" phrasing right before its
+  own correction (line 238). Let me make that clause consistent:
+
+● Update(docs/CLEANROOM_SPEC.md)
+  ⎿  Added 1 line, removed 1 line
+      235  **Entity notes (the conceptual contract, not the storage shape
+           ):**
+      236  
+      237  - **Work item** is the atom. Almost everything else exists to 
+           *group*, *classify*, or *enrich* work items. A work item can s
+           imultaneously be "a project" and "a video" — the *kind* is der
+           ived, not stored rigidly.
+      238 -- **Product line** is a coarse grouping ("which of my ongoing 
+          -efforts is this part of"), now a **required FK** on every work
+          - item. The as-built model also keeps a catch-all bucket for it
+          -ems with no line. **⚠ Corrected (see Correction notice at top)
+          -: the catch-all is *not* an accident — keep it.** What is an a
+          -ccident is *inference into* the catch-all (keyword-guessing a 
+          -line from text, §2.5); kill that. The catch-all as an explicit
+          - holding bucket for deliberately-uncategorized fast drafts is 
+          -legitimate domain. The rule that holds: every item resolves to
+          - exactly one line and the line is never inferred from text; wh
+          -ether an unset line defaults to the catch-all (recommended) or
+          - is required at creation is a workflow judgment call.         
+      238 +- **Product line** is a coarse grouping ("which of my ongoing 
+          +efforts is this part of"); every work item **always resolves t
+          +o exactly one line** (set explicitly, or via the catch-all def
+          +ault — see correction below). The as-built model keeps a catch
+          +-all bucket for items with no line. **⚠ Corrected (see Correct
+          +ion notice at top): the catch-all is *not* an accident — keep 
+          +it.** What is an accident is *inference into* the catch-all (k
+          +eyword-guessing a line from text, §2.5); kill that. The catch-
+          +all as an explicit holding bucket for deliberately-uncategoriz
+          +ed fast drafts is legitimate domain. The rule that holds: ever
+          +y item resolves to exactly one line and the line is never infe
+          +rred from text; whether an unset line defaults to the catch-al
+          +l (recommended) or is required at creation is a workflow judgm
+          +ent call.                                                     
+      239  - **Series** is a finer grouping *within* a line (e.g. an epis
+           odic run). Optional. (The as-built `aliases[]` on series and t
+           echnology is an **accident — do not port**; aliases exist only
+            to support name-based matching, which §3.1 #5 deletes.)
+      240  - **Technology** is a controlled vocabulary. A work item refer
+           ences it **by canonical ID only** — the display name lives on 
+           the technology record and is resolved at render. (The as-built
+            work item carries a *second*, parallel list of free-text stac
+           k labels alongside the refs; that dual list is an **accident —
+            do not port**. It exists only to paper over un-normalized leg
+           acy stack data. One list of refs; the canonical refs power all
+            cross-cutting "what uses X" views.)
+      241  - **Video bundle** is a rich, nested, **deliberately path-free
+           ** record describing a produced video — its segments, the visu
+           al style system used, recurring characters, cited sources, ful
+           l transcript, and a production-cost/credits summary. It is the
+            public-facing contract for the media side, intentionally deco
+           upled from the raw production files it was derived from.
+
+● Done. Here's what happened and what changed.
+
+  Your challenge was correct — I caught myself cargo-culting
+
+  You asked why I made productLineId required. The honest answer: because 
+  CLEANROOM_SPEC said so, and I treated its opinion as a fact. I never
+  re-derived it. That's precisely the disease you're describing — the spec
+  writes rebuild opinions in the same authoritative voice as extracted facts,
+  and a reader (me) absorbed the opinion and stopped thinking.
+
+  Re-deriving it properly: the catch-all is not an accident. It answers a real
+  domain tension (fast/messy authoring per DOMAIN_PRIMER §0 + reads that must
+  always group by line). The spec collapsed two different things and threw out
+  both — it should only have killed inference of the line from text, not the
+  holding bucket. So catch-all stays; only the guessing dies. Whether to instead
+  require the line at creation is a workflow judgment call, not a domain law.
+
+  What I changed
+
+  docs/CLEANROOM_SPEC.md — neutralized without gutting it (the entity model,
+  contracts, and genuinely-solid debt findings are still valuable):
+  - A loud Correction notice at the top explaining the doc mixes facts with
+  opinions, that the §0.5 test "proves too much," and overruling the two bad
+  verdicts (bake, catch-all). It explicitly overrides the body where they
+  conflict.
+  - Inline ⚠ flags at every offending claim (§0.5 test, §1.3, §2.4 #7, §3.1 #7,
+  §3.4 heading + section) so a reader who lands mid-document can't miss the
+  correction. Original (wrong) text is preserved as a record, not deleted — so
+  the reasoning error itself is visible and learnable.
+
+  docs/ROADMAP.md — reversed the wrong decision I'd written: the Phase-1
+  "correction" now keeps the catch-all and reframes the lesson as a worked 
+  example of not trusting a spec verdict; the §1 table and §6 decisions updated
+  to match.
+
+  Memory — corrected the stored conclusion (it had "catch-all removed / required
+  FK") and broadened it: CLEANROOM_SPEC over-claims; treat its "accident — do
+  not port" verdicts as claims to re-derive.
+
+  The actual principle (for the juniors)
+
+  A spec's confident "accident — do not port" is a claim to re-derive, not a 
+  command. The test: does the verdict follow from the fact docs (DOMAIN_PRIMER,
+  BEHAVIOR_INVENTORY) and the real workflow — or only from a heuristic (§0.5)
+  applied mechanically? Two of this spec's loudest verdicts failed that check.
+  The cancer wasn't the spec having opinions; it was the opinions wearing the
+  costume of facts. The fix is to keep the opinions but strip the costume.
+
+  One thing I did not do: pretend the spec was all wrong. Its findings on
+  inference cascades, name-based joins, per-record patch maps, the fallback
+  cascade, and duplicated slugify/markdown are solid and still stand.
+  Over-correcting into "ignore the whole doc" would just be the same disease
+  pointed the other way.
+
+  I left these as uncommitted working-tree edits. Want me to commit them (spec +
+  roadmap + the docs together), or review anything first?
+
+✻ Cogitated for 4m 52s
+
+❯ add a new document for human readers like me who think that im retarded cuz i 
+  feel slow as shit. like an informal document for me to actually see step by   
+  step how to recreate the app to match ~/dev/projects/artluai-pre-cleanroom    
+
+● First, let me actually look at the reference app you're matching, so the
+  walkthrough points at real things, not guesses.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The reference app is there and matches what the cleanroom docs describe. Now
+  let me write you something human.
+
+● Write(docs/REBUILD_FOR_HUMANS.md)
+  ⎿  Wrote 252 lines to docs/REBUILD_FOR_HUMANS.md
+       1 # Rebuild this app, explained like you're a person (not a compil
+       2 
+       3 Hey. Read this first. It's the friendly version.
+       5 ## First, the thing you actually need to hear
+       6 
+         t were written for
+       8 *architects and AI agents* — `CLEANROOM_SPEC.md` literally talks
+       9 diagrams. Of course it feels like wading through wet concrete. F
+         eeling slow here isn't a
+         hing.
+     … +330 lines (ctrl+o to expand)
+
+● Done — docs/REBUILD_FOR_HUMANS.md.
+
+  It's written for you, not for a machine. What's in it:
+
+  - A real pep talk up front — you're not slow, the material is dense (it's
+  written for architects and AI). Slow is the correct speed when you're actually
+  learning.
+  - The whole app in two sentences, and the key reframe:
+  ~/dev/projects/artluai-pre-cleanroom is your answer key — a finished version
+  you can run and poke whenever you're unsure what something should do. (I
+  confirmed it's there and runnable: npm run dev.)
+  - The one rule you can't break (private never leaks) and why the privacy gate
+  is already built first.
+  - The forever-loop (RED → GREEN → REFACTOR) in plain words, with the
+  reassurance that matters most for feeling overwhelmed: you never hold more 
+  than one small idea at a time.
+  - Where the to-do list comes from — BEHAVIOR_INVENTORY.md is your checklist;
+  one checkbox = one little win.
+  - The build map in human terms (7 stages, with "you don't need to understand
+  4–7 yet").
+  - Your literal next 3 sittings — a tiny on-ramp so you don't have to plan;
+  just do the next thing.
+  - A "when you feel stuck/stupid" section — practical moves, including "soup
+  brain? do one box, then stop, guilt-free."
+  - A cheat sheet of commands and the docs ranked by how human-friendly they
+  are.
+
+  I also baked in the lesson from our last exchange: it warns you that
+  CLEANROOM_SPEC.md is overconfident and to trust the running old app +
+  DOMAIN_PRIMER.md over the spec's "delete this" hot takes.
+
+  These are all uncommitted working-tree edits now (the two new docs plus the
+  spec/roadmap corrections from before). Want me to commit the lot together, or
+  leave it for you to review first?
+
+✻ Cooked for 1m 52s
+
+※ recap: You're TDD-rebuilding the artlu tracker app and just finished the planning docs (ROADMAP, REBUILD_FOR_HUMANS) plus correcting CLEANROOM_SPEC's overzealous claims. Next action: commit these doc changes, or start the first new test cycle. (disable recaps in /config)
+
+❯ nothing i can review as my brain is fried. all up to you my friend. whether   
+  you want to commit or not or review is all up to you.                         
+● All yours to nothing-do — got it. I'll take it from here: sanity-check, then
+  commit. Let me verify nothing's broken and see exactly what's staged for the
+  commit.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Tests green (only docs changed, no code touched). Committing all three docs
+  together — this matches the repo's convention of docs commits straight to
+  main.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Committed and clean. Rest your brain — here's all you need to know, nothing to
+  act on:
+
+  Done: 1e63d62 on main. Three docs, tests green, working tree clean.
+  - docs/REBUILD_FOR_HUMANS.md — your human walkthrough (start here when you're
+  back).
+  - docs/ROADMAP.md — the plan with reasoning.
+  - docs/CLEANROOM_SPEC.md — corrected so it stops confusing you (and me) with
+  opinions dressed as facts.
+
+  I didn't push (you didn't ask, and it's a local commit you can undo trivially
+  if future-you disagrees). Nothing's outward-facing.
+
+  When your brain comes back online, the only thing to open is
+  docs/REBUILD_FOR_HUMANS.md → "Your literal next three sittings." That's the
+  whole on-ramp. One red test at a time. 🫡
+
+✻ Worked for 34s
+
+※ recap: You're rebuilding the artlu tracker app cleanly via TDD, using the old app as the answer key. I committed three docs (roadmap, human walkthrough, corrected spec). Next: open docs/REBUILD_FOR_HUMANS.md and do the first "sitting." (disable recaps in /config)
+
+❯ well i'm supposed to create new tests right? to progress?                     
+
+● Yes — exactly right. That's the whole engine of progress here: each new test 
+  you write (and watch fail, then make pass) is one more thing the app provably 
+  does. No new test = no new behavior. You've got the model.
+
+  The loop, one more time in a single breath: write a tiny failing test → write
+  the smallest code to pass it → tidy up. Repeat.
+
+  Your next bite is already picked out for you in the human doc (sitting 2).
+  From BEHAVIOR_INVENTORY.md section A:
+
+  ▎ "gives an untitled work item the title 'untitled project'"
+
+  Right now createWorkItem doesn't do that — so a test asking for it will fail,
+  which is the correct, healthy start.
+
+  Two ways to play it, your call:
+
+  - You drive, I spot you — you write the failing test, run npm test, paste me
+  what happens. I'll tell you if your RED is a "good fail" (missing behavior)
+  vs. a "bad fail" (typo). Best for learning, but takes a little energy.
+  - I demo one full loop — I write that one test, show you it fail, make it
+  pass, and narrate each step so you can see the rhythm once. Then you copy the
+  shape next time. Best when your brain is fried.
+
+  Given you said your brain's toast — want me to just do the demo loop so you
+  can watch how it goes? You don't have to type anything.
+
+✻ Churned for 22s
+
+❯ in the age of 2026, i genuinely dont think juniors have the luxury to learn   
+  manually. best we can hope for is that everything makes sense and the junior  
+  knows what code is being outputted and what it does. so i think each          
+  development iteration should be you demoing it and then put it on dev log     
+
+● That's a clear standing instruction, and honestly a sane read of how juniors
+  actually ship in 2026: the bottleneck isn't typing, it's understanding what 
+  got written and why. So new rhythm, locked in:
+
+  I drive each TDD cycle → you watch the real RED/GREEN/REFACTOR with actual 
+  test output → I write it up in the dev-log so there's a permanent, readable 
+  trail.
+
+  Let me record that as a standing preference, then run the first cycle for
+  real.
+
+  Wrote 2 memories (ctrl+o to expand)
+
+● Now the cycle. RED first — I add one failing test for the next behavior, then
+  run it so you can see it fail.
+
+● Update(tests/work-item.test.ts)
+  ⎿  Added 9 lines
+      21  
+      22      expect(workItem.productLineId).toBe("catch-all");
+      23    });
+      24 +                                                               
+      25 +  it("titles an untitled work item 'untitled project'", () => {
+      26 +    const workItem = createWorkItem({                          
+      27 +      id: "work-003",                                          
+      28 +      title: "",                                               
+      29 +    });                                                        
+      30 +                                                               
+      31 +    expect(workItem.title).toBe("untitled project");           
+      32 +  });                                                          
+      33  });
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● That's a good RED — look at the error: expected '' to be 'untitled project'.
+  The test reached real code, ran it, and the behavior is genuinely missing (an
+  empty title stays empty). That's exactly the kind of failure we want — it's
+  the missing behavior failing, not a typo or a broken import.
+
+  GREEN — smallest change that makes it pass:
+
+● Update(src/domain/work-item.ts)
+  ⎿  Added 1 line
+      19  export function createWorkItem(input: CreateWorkItemInput): Wor
+          kItem {
+      20    return {
+      21      ...input,
+      22 +    title: input.title || "untitled project",                  
+      23      productLineId: input.productLineId ?? CATCH_ALL_PRODUCT_LIN
+          E_ID,
+      24      visibility: input.visibility ?? "private",
+      25    };
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● GREEN. Targeted test passes, and the full suite is 4/4 — nothing regressed.
+
+  One thing worth seeing, since "understanding the code" is the goal: I used ||,
+  not ??. ?? only kicks in for null/undefined, but we want an empty title ("")
+  to also fall back — and "" is falsy, so || catches it. That's a faithful copy
+  of the legacy rule, which DOMAIN_PRIMER §2.1 writes as name ||= "untitled 
+  project".
+
+  REFACTOR — the behavior's correct, so now I tidy without changing it: pull the
+  magic string into a named constant, matching the CATCH_ALL_PRODUCT_LINE_ID
+  pattern already in this file.
+
+● Update(src/domain/work-item.ts)
+  ⎿  Added 2 lines
+      2  
+      3  export const CATCH_ALL_PRODUCT_LINE_ID = "catch-all";
+      4  
+      5 +export const DEFAULT_WORK_ITEM_TITLE = "untitled project";      
+      6 +                                                                
+      7  export type CreateWorkItemInput = {
+      8    id: string;
+      9    title: string;
+
+● Update(src/domain/work-item.ts)
+  ⎿  Added 1 line, removed 1 line
+      21  export function createWorkItem(input: CreateWorkItemInput): Wor
+          kItem {
+      22    return {
+      23      ...input,
+      24 -    title: input.title || "untitled project",                  
+      24 +    title: input.title || DEFAULT_WORK_ITEM_TITLE,             
+      25      productLineId: input.productLineId ?? CATCH_ALL_PRODUCT_LIN
+          E_ID,
+      26      visibility: input.visibility ?? "private",
+      27    };
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Cycle complete and clean. Now the dev-log entry, matching the existing
+  beginner-readable style:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Write(docs/dev-log/2026-06-13-181618-untitled-project-default.md)
+  ⎿  Wrote 157 lines to
+     docs/dev-log/2026-06-13-181618-untitled-project-default.md
+       1 # 2026-06-13 18:16:18 - Cycle 4: An Untitled Work Item Defaults 
+       2 
+       3 This entry continues the cleanroom TDD work. From this point on,
+          the iterations are **driven by
+          output) while the rationale is
+       5 written down here so a human can follow exactly what was produce
+       6 understanding, not manual typing.
+       7 
+       8 ## Where We Were
+      10 Three cycles were already done (see the previous dev-log):
+     … +176 lines (ctrl+o to expand)
+
+● Now commit the cycle (code + test + dev-log together):
+  Ran 1 shell command (ctrl+o to expand)
+
+● Cycle done and committed (5c3cef0). Tree clean, suite 4/4. Here's the whole
+  loop you just watched, in four lines:
+
+  - RED — wrote a test saying an empty title should become "untitled project";
+  ran it; saw it fail with expected '' to be 'untitled project' (real missing
+  behavior, not a typo).
+  - GREEN — added title: input.title || "untitled project"; test passed, suite
+  stayed green.
+  - REFACTOR — pulled the string into DEFAULT_WORK_ITEM_TITLE; re-ran, still
+  4/4.
+  - LOG — wrote docs/dev-log/2026-06-13-181618-untitled-project-default.md
+  explaining each step.
+
+  The one idea worth keeping in your head from this one: || vs ??. ?? only fills
+  in null/undefined; || also fills in empty string. We wanted empty titles to
+  default too, so || — exactly matching the old app's name ||=.
+
+  That's the rhythm now, and it'll feel identical every time, which is the
+  point.
+
+  Next up in section A (smallest first): generate a slug from the title →
+  "untitled entry" for logs → the slug formatting rules
+  (lowercase/hyphenate/trim/cap at 80).
+
+  Want me to just keep rolling through them — say, knock out the next 3 cycles
+  back-to-back and report when there's something worth pausing on? Or one at a
+  time with a beat between each like this? Totally fine to say "keep going" and
+  go rest your eyes.
+
+✻ Churned for 2m 46s
+
+❯ how far are we from completing a vertical slice? i just want to make sure we  
+  did not forget about that                                                     
+
+● Good instinct to check — this is exactly the trap the TDD playbook warns about
+  (grinding the whole domain layer first and never proving it holds weight).
+  Honest status: we have not started the vertical slice yet. We're still in the 
+  innermost ring.
+
+  Here's the slice and where we actually are:
+
+    PERSIST  ──▶  EXPORT (privacy gate)  ──▶  RENDER
+   [missing]        [✓ have the core]        [missing]
+
+  - Middle — done. selectPublicWorkItems is the privacy gate, and createWorkItem
+  gives us a real entity. That's the heart of the slice already built and
+  tested.
+  - Left end — missing. No way to save a work item and read it back. Needs a
+  store port (an interface) + one real adapter. Cleanest, zero-new-dependencies
+  option: a temp-directory JSON file store (faithful to the legacy snapshot, and
+  it's real filesystem I/O so we test it for real, not mocked).
+  - Right end — missing. No render path. Thinnest version: a pure function that
+  turns one work item into its detail-page HTML string. (Wiring up the actual
+  Astro framework is a separate, later step — the rebuild repo doesn't even have
+  Astro installed yet, and we don't need it to prove the logic of the slice.)
+
+  Distance: roughly 3–4 focused cycles.
+
+  1. Store port + in-memory fake → prove "save an item, list it back."
+  2. Real filesystem adapter → same round-trip, against a real temp dir (owned
+  infra, tested for real per the playbook).
+  3. Export use case → read from the store, run it through the privacy gate,
+  emit the snapshot. Headline test: a private item never appears in the output.
+  4. Render function → a public item produces HTML showing its title/status;
+  (and the slice's money assertion: a private item produces no page).
+
+  When those four are green, we'll have proven the real thing the playbook cares
+  about: a stored public item becomes a rendered artifact, and a private one 
+  provably does not — start to finish.
+
+  My recommendation: pivot to the slice next, instead of finishing the rest of 
+  section A. The remaining section-A boxes (slug rules, "untitled entry", etc.)
+  are polish on a skeleton we haven't load-tested yet. Building the slice now
+  will also tell us which fields actually matter (slug, date, status) by
+  applying real design pressure — better than guessing them in more domain-only
+  cycles. We can come back and finish section A once the skeleton holds weight.
+
+  Want me to start the slice now — Cycle 5 = the store port + the "save then
+  read it back" test? I'll drive it and log it, same as before.
+
+✻ Worked for 56s
+
+❯ should we not finish the slice with the astro render? are we not falling into 
+  horizontal slicing trap again?                                                
+
+● You're right, and I was wrong last turn. Calling the Astro page "framework
+  glue we can defer" was me quietly weakening the slice — and yes, that's the
+  horizontal trap wearing a disguise. If I build port → adapter → export →
+  render-function and stop, I've built a logic layer all the way across without
+  ever crossing the one boundary the playbook explicitly names as where glass
+  invariants shatter: the framework edge. A render function that returns an HTML
+  string only proves a function a hypothetical Astro page would call. It
+  doesn't prove a real page renders during a real build with the privacy rule
+  intact. That's the whole point of the slice.
+
+  So the slice's terminus is a real Astro page that renders during a real build,
+  and the money test runs at that edge:
+
+  PERSIST ──▶ EXPORT (privacy gate) ──▶ RENDER FN ──▶ ASTRO PAGE (real build)
+                                                       ▲ public item → page
+  exists
+                                                         private item → no page
+
+  The render function still exists — but as the inner piece the Astro page
+  calls. That keeps business/render logic out of the framework component
+  (dependency direction stays clean: the .astro page is a thin controller that
+  calls the use case + render fn). The slice just isn't done until that wiring
+  is proven once, end to end.
+
+  What this changes: the rebuild repo has no Astro yet (only vitest + ts). So
+  the slice now includes bringing Astro in. That's a setup/config step (legit
+  non-TDD per playbook §12 — config/glue), immediately followed by a real test
+  at the edge. For the edge test I'd use Astro's Container API to render the
+  route to a string in vitest (I'll confirm the exact v6 surface when we get
+  there rather than guess it) — or fall back to asserting on astro build output
+  files. Either way it's automated, not "I looked at it."
+
+  Corrected slice, walking-skeleton order (reach the real edge as early as the
+  inner pieces allow, then thicken):
+
+  1. Store port + in-memory fake → save then read back.
+  2. Export use case → store → privacy gate → snapshot; private never appears.
+  3. Pure render fn → item → detail HTML (title/status).
+  4. Astro page wired to 1–3 + the real render/build test → public renders,
+  private is absent. ← the terminus you're insisting on, correctly.
+  5. Swap the in-memory fake for the real filesystem adapter (integration test
+  vs a temp dir) — now the slice is real all the way down.
+
+  ~5 cycles + a small Astro setup step. When step 4 is green we have an actual
+  end-to-end skeleton; step 5 makes the persistence real rather than faked.
+
+  This is the right call and I'd start it now: Cycle 5 = the store port + "save 
+  then read it back." Want me to roll, same drive-and-log rhythm?
+
+✻ Cooked for 1m 25s
+
+❯ affirmative                                                                   
+
+● Affirmative — rolling Cycle 5. RED first: a test for the store's one behavior,
+  then run it to watch it fail.
+
+● Write(tests/in-memory-work-item-store.test.ts)
+  ⎿  Wrote 19 lines to tests/in-memory-work-item-store.test.ts
+       1 import { describe, expect, it } from "vitest";
+       2 
+       3 import { createWorkItem } from "../src/domain/work-item";
+       4 import { InMemoryWorkItemStore } from "../src/store/in-memory-wo
+         rk-item-store";
+       6 describe("in-memory work item store", () => {
+       7   it("returns a saved work item when listing", async () => {
+       8     const store = new InMemoryWorkItemStore();
+       9     const workItem = createWorkItem({
+      10       id: "work-001",
+     … +10 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Good RED — Does the file exist?. The test is demanding a store module that
+  doesn't exist yet. That's an acceptable RED (the playbook allows "the target
+  file doesn't exist yet" as valid design pressure).
+
+  GREEN — the minimum store that makes it pass:
+
+● Write(src/store/in-memory-work-item-store.ts)
+  ⎿  Wrote 13 lines to src/store/in-memory-work-item-store.ts
+       1 import type { WorkItem } from "../domain/work-item";
+       2 
+       3 export class InMemoryWorkItemStore {
+       4   private readonly workItems: WorkItem[] = [];
+       5 
+       6   async save(workItem: WorkItem): Promise<void> {
+       7     this.workItems.push(workItem);
+       8   }
+       9 
+      10   async list(): Promise<WorkItem[]> {
+     … +3 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● GREEN — 5/5.
+
+  Two decisions worth seeing here, since understanding-the-code is the goal:
+
+  1. Why async/Promise when an in-memory array doesn't need it. Step 5 of this
+  slice swaps this for a real filesystem store, which is inherently async. The
+  port has to be one uniform shape both adapters satisfy — a sync in-memory
+  store and an async file store can't share a type. So async now isn't
+  speculation; it's a concrete, imminent boundary in this slice. (If the
+  filesystem adapter weren't already planned, I'd have kept it sync.)
+  2. No WorkItemStore interface yet. The port abstraction gets born next cycle,
+  when the export use case actually needs to depend on something swappable.
+  Creating it now, with no consumer, would be ceremony ahead of demand.
+
+  REFACTOR — list() currently hands back the live internal array, so a caller
+  could mutate the store's guts. Return a copy instead. Behavior is identical;
+  encapsulation is safer:
+
+● Update(src/store/in-memory-work-item-store.ts)
+  ⎿  Added 1 line, removed 1 line
+       8    }
+       9  
+      10    async list(): Promise<WorkItem[]> {
+      11 -    return this.workItems;                                     
+      11 +    return [...this.workItems];                                
+      12    }
+      13  }
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Still 5/5 after refactor. Cycle 5 done. Writing the dev-log and committing.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Write(docs/dev-log/2026-06-13-183045-vertical-slice-store-port.md)
+  ⎿  Wrote 149 lines to
+     docs/dev-log/2026-06-13-183045-vertical-slice-store-port.md
+       1 # 2026-06-13 18:30:45 - Cycle 5: In-Memory Work Item Store (Vert
+       2 
+       3 This cycle starts the **first vertical slice**. Until now every 
+       4 The slice exists to prove the thinnest *meaningful* path through
+          the whole system, end to end,
+         nvariants" (rules that look
+       6 right in memory and shatter the moment they touch persistence or
+       7 
+       8 ## The Slice We Are Building
+      10 ```
+     … +170 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Cycle 5 committed (30efbc2), tree clean, 5/5 green. Slice progress: step 1 of 
+  5 done (persistence, in-memory).
+
+  The whole loop again in one breath: wrote a test demanding a store → watched
+  it fail with "does the file exist?" → built the smallest save/list store →
+  refactored list() to return a copy so callers can't mutate the store's guts →
+  logged it. The one idea to keep: the store is async not because an array needs
+  it, but because the filesystem store coming in step 5 forces the port to be
+  async — same-shaped port, two adapters.
+
+  Next is Cycle 6 — the export use case, and it's the important one: it's where
+  the WorkItemStore port gets born, and where the privacy gate becomes a real
+  seam (read everything from the store → drop non-public → emit the snapshot).
+  The headline test is the money one for this whole app: a private item never 
+  reaches the output.
+
+  Two ways to run it:
+  - One at a time (like now) — I roll Cycle 6, report, you get a beat to react.
+  Best if you want to stay in the loop on the design calls (the port shape is a
+  real decision).
+  - Batch to the skeleton — I run Cycles 6→8 back-to-back and only stop at the
+  first real Astro render (the terminus), reporting once when there's something
+  you can actually see working.
+
+  Say the word — "cycle 6" for one, or "batch it" to push to the visible
+  skeleton. Either way I keep driving and logging.
+
+✻ Brewed for 2m 12s
+
+❯ batch it but do not get lazy on the documenting and explanations              
+
+● Batching Cycles 6→8 to the first real Astro render. Full RED/GREEN/REFACTOR
+  with real runs, a dev-log per cycle, and an actual astro build at the end as
+  the framework-edge proof. Here we go.
+
+  ---
+  Cycle 6 — Export use case (the privacy seam) + the WorkItemStore port
+
+  RED:
+● Write(tests/export-read-model.test.ts)
+  ⎿  Wrote 27 lines to tests/export-read-model.test.ts
+       1 import { describe, expect, it } from "vitest";
+       2 
+       3 import { createWorkItem } from "../src/domain/work-item";
+         rk-item-store";
+       5 import { exportReadModel } from "../src/app/export-read-model";
+       6 
+       7 describe("export read model", () => {
+       8   it("excludes non-public work items from the snapshot", async (
+       9     const store = new InMemoryWorkItemStore();
+      10     const publicItem = createWorkItem({
+     … +19 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Good RED (collection failed — the export-read-model module doesn't exist yet).
+
+  GREEN — this is the moment the port abstraction is demanded: the use case
+  needs to depend on something swappable (in-memory now, filesystem later). So
+  WorkItemStore is born here, not earlier.
+
+● Write(src/store/work-item-store.ts)
+  ⎿  Wrote 6 lines to src/store/work-item-store.ts
+      1 import type { WorkItem } from "../domain/work-item";
+      2 
+      3 export interface WorkItemStore {
+      4   save(workItem: WorkItem): Promise<void>;
+      5   list(): Promise<WorkItem[]>;
+      6 }
+
+● Write(src/app/export-read-model.ts)
+  ⎿  Wrote 12 lines to src/app/export-read-model.ts
+       1 import type { WorkItem } from "../domain/work-item";
+       2 import { selectPublicWorkItems } from "../domain/privacy-gate";
+       3 import type { WorkItemStore } from "../store/work-item-store";
+       4 
+       5 export type ReadModel = {
+       7 };
+       8 
+       9 export async function exportReadModel(store: WorkItemStore): Pro
+         mise<ReadModel> {
+      10   const all = await store.list();
+     … +3 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● GREEN — 6/6. The privacy seam now exists as a real use case: read everything
+  from the store, drop non-public, emit a snapshot.
+
+  Two judgment calls to surface:
+  - Why a { workItems } envelope, not a bare array. Contract A in our specs is
+  explicitly "a map of collections" (work items, logs, lines, …). The export is
+  the one place that contract is produced, so modeling it as a snapshot object
+  from cycle one reflects the real, documented boundary and avoids a rename when
+  log entries join. Justified by a named contract — not speculation.
+  - The privacy guarantee now lives in one place. Every future page reads from
+  this snapshot, so nothing downstream can re-introduce a leak.
+
+  REFACTOR — make the in-memory store explicitly implement the port, so the
+  compiler enforces the contract and catches drift when the filesystem adapter
+  arrives:
+
+● Update(src/store/in-memory-work-item-store.ts)
+  ⎿  Added 2 lines, removed 1 line
+      1  import type { WorkItem } from "../domain/work-item";
+      2 +import type { WorkItemStore } from "./work-item-store";         
+      3  
+      3 -export class InMemoryWorkItemStore {                            
+      4 +export class InMemoryWorkItemStore implements WorkItemStore {   
+      5    private readonly workItems: WorkItem[] = [];
+      6  
+      7    async save(workItem: WorkItem): Promise<void> {
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Full suite 6/6 green — the refactor holds, and the implements WorkItemStore
+  clause type-checks (tsc raised no "incorrectly implements" error).
+
+  One honest note: that tsc --noEmit I ran surfaced TS2835 extensionless-import
+  errors — but look closely, they're on the pre-existing files too
+  (work-item.test.ts, privacy-gate.test.ts). It's a latent config mismatch (the
+  tsconfig says nodenext, which wants .js import suffixes, but the whole
+  codebase is written extensionless and runs fine under Vitest). I did not
+  introduce it and I'm not fixing it mid-slice — that's a separate cleanup
+  (likely switching moduleResolution to "bundler"). The project's real gate is
+  npm test, which is green.
+
+  Logging Cycle 6 and committing:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Write(docs/dev-log/2026-06-13-183730-vertical-slice-export-use-case.md)
+  ⎿  Wrote 121 lines to
+     docs/dev-log/2026-06-13-183730-vertical-slice-export-use-case.md
+       1 # 2026-06-13 18:37:30 - Cycle 6: Export Use Case + WorkItemStore
+       2 
+       3 Second step of the first vertical slice. This is the **privacy s
+       4 the mutable authoring world becomes the immutable public read mo
+         del. If this is correct and
+         ysically cannot reach a page.
+       6 
+       8 
+       9 5 tests passing. We had an in-memory store (`save`/`list`) and t
+      10 (`selectPublicWorkItems`), but nothing connected them.
+     … +137 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● ---
+  Cycle 7 — Pure render function (work item → HTML)
+
+  RED:
+
+● Write(tests/render-work-item-detail.test.ts)
+  ⎿  Wrote 18 lines to tests/render-work-item-detail.test.ts
+       1 import { describe, expect, it } from "vitest";
+       2 
+       3 import { createWorkItem } from "../src/domain/work-item";
+       4 import { renderWorkItemDetail } from "../src/render/work-item-de
+         tail";
+       6 describe("render work item detail", () => {
+       7   it("renders the work item title in a heading", () => {
+       8     const workItem = createWorkItem({
+       9       id: "shipped-build",
+      10       title: "Shipped Build",
+     … +9 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Good RED (no render/work-item-detail module yet). GREEN — smallest renderer:
+
+● Write(src/render/work-item-detail.ts)
+  ⎿  Wrote 5 lines to src/render/work-item-detail.ts
+      1 import type { WorkItem } from "../domain/work-item";
+      2 
+      3 export function renderWorkItemDetail(workItem: WorkItem): string 
+        {
+      4   return `<h1>${workItem.title}</h1>`;
+      5 }
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● GREEN — 7/7. Renderer is minimal by design; no refactor warranted.
+
+  One deliberate deferral worth flagging (not a miss): the title is interpolated
+  raw, so this isn't HTML-escaped yet. Escaping is a real trust-boundary
+  behavior — it gets its own RED/GREEN cycle later (the legacy app handles this
+  in renderMarkdownLite). I'm not sneaking it in now without a test demanding
+  it. Noted in the log's next-candidates.
+
+  Also note why this is a plain TS function and not Astro markup: presentation
+  logic stays in tested code; the .astro file (next cycle) will be thin glue
+  that just calls this. Keeps dependency direction clean.
+
+  Logging Cycle 7 and committing:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Write(docs/dev-log/2026-06-13-183831-vertical-slice-render-function.md)
+  ⎿  Wrote 95 lines to
+     docs/dev-log/2026-06-13-183831-vertical-slice-render-function.md
+       1 # 2026-06-13 18:38:31 - Cycle 7: Pure Render Function (Slice Ste
+       2 
+       3 Third step of the slice: turn one work item into HTML. Kept as a
+       4 function** rather than Astro markup, on purpose: presentation lo
+       5 the Astro page (next cycle) becomes thin glue that just calls th
+         is. That keeps the dependency
+         everse.
+       7 
+       9 
+          public snapshot but had no way
+     … +97 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● ---
+  Cycle 8 — Astro page + real build (the slice terminus)
+
+  First the setup (this part is config/glue, not a TDD cycle — playbook §12):
+  bring Astro into the repo to match the reference app's stack.
+
+  Ran 1 shell command (ctrl+o to expand)
+● Astro installed (the audit warnings are transitive dev-dependency noise, not
+  our concern). Now the minimal config and a scaffold data source for the build:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Write(astro.config.mjs)
+  ⎿  Wrote 7 lines to astro.config.mjs
+      1 import { defineConfig } from "astro/config";
+      2 
+      3 // Static output: the site is baked, never rendered per-request.
+      4 // (See ROADMAP.md §2 — we keep the bake on purpose.)
+      5 export default defineConfig({
+      6   output: "static",
+      7 });
+
+● RED — the page-paths use case (this is the testable logic the .astro file will
+  call, keeping framework code thin):
+
+● Write(tests/work-item-pages.test.ts)
+  ⎿  Wrote 31 lines to tests/work-item-pages.test.ts
+       1 import { describe, expect, it } from "vitest";
+       2 
+       3 import { createWorkItem } from "../src/domain/work-item";
+         rk-item-store";
+       5 import { getWorkItemPaths } from "../src/app/work-item-pages";
+       6 
+       7 describe("work item pages", () => {
+       8   it("builds a page only for each public work item, carrying its
+       9     const store = new InMemoryWorkItemStore();
+      10     await store.save(
+     … +23 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Good RED (no work-item-pages module). GREEN — the use case that maps the
+  public snapshot to Astro's getStaticPaths shape, reusing the export (privacy)
+  and render (html) we already built:
+
+● Write(src/app/work-item-pages.ts)
+  ⎿  Wrote 16 lines to src/app/work-item-pages.ts
+       1 import { exportReadModel } from "./export-read-model";
+       2 import { renderWorkItemDetail } from "../render/work-item-detail
+         ";
+       4 
+       5 export type WorkItemPage = {
+       6   params: { id: string };
+       7   props: { html: string };
+       8 };
+      10 export async function getWorkItemPaths(store: WorkItemStore): Pr
+         omise<WorkItemPage[]> {
+     … +7 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● GREEN — 8/8. Privacy now holds at the routing layer too: getWorkItemPaths
+  returns exactly one path (the public item), because it reads from the export.
+  The private item gets no route.
+
+  Now the glue: a scaffold data source (so the static build has something to
+  render until the real filesystem adapter lands in Cycle 9) and the thin .astro
+  page.
+
+● Write(src/app/sample-data.ts)
+  ⎿  Wrote 17 lines to src/app/sample-data.ts
+       1 import { createWorkItem } from "../domain/work-item";
+         tem-store";
+       3 import type { WorkItemStore } from "../store/work-item-store";
+       4 
+         r while the data
+       6 // source is still in-memory. It is replaced by the real filesys
+       7 // adapter in the next slice step (Cycle 9). This is not product
+         ion data.
+       8 export async function sampleStore(): Promise<WorkItemStore> {
+      10   await store.save(
+     … +13 lines (ctrl+o to expand)
+
+● Write(src/pages/project/[id].astro)
+  ⎿  Wrote 23 lines to src/pages/project/[id].astro
+       1 ---
+       2 import { getWorkItemPaths } from "../../app/work-item-pages";
+       4 
+       5 // Thin glue: the framework boundary calls our tested use case. 
+         No business
+          export
+       7 // (privacy gate), and the HTML is produced by the render functi
+         on.
+       9   return getWorkItemPaths(await sampleStore());
+      10 }
+     … +15 lines (ctrl+o to expand)
+
+● Now the real astro build — the framework-edge proof the whole slice was aiming
+  at:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The build log already shows the proof: it generated only
+  /project/shipped-build/index.html — the private draft-build produced no page.
+  Let me make that concrete by inspecting the actual output files:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The slice is proven end-to-end at the real framework edge: the public item is
+  a real HTML file with its title; the private item simply does not exist in the
+  built site. That's the privacy boundary as a physical fact, not a promise.
+
+  Now housekeeping before the commit — check what Astro generated and make sure
+  I only commit source:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Add .astro/ (generated cache) to gitignore, and wire up the standard Astro npm
+  scripts so the app is runnable:
+
+● Update(.gitignore)
+  ⎿  File must be read first
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(.gitignore)
+  ⎿  Added 1 line
+      1  node_modules/
+      2  coverage/
+      3  dist/
+      4 +.astro/                                                         
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(package.json)
+  ⎿  Added 3 lines
+       4    "private": true,
+       5    "type": "module",
+       6    "scripts": {
+       7 +    "dev": "astro dev",                                        
+       8 +    "build": "astro build",                                    
+       9 +    "preview": "astro preview",                                
+      10      "test": "vitest run",
+      11      "test:watch": "vitest"
+      12    },
+
+● Confirm the whole suite is still green after the Astro install and all wiring:
+
+  Ran 1 shell command (ctrl+o to expand)
+● 8/8 green and Astro coexists cleanly with Vitest. Writing the Cycle 8 dev-log
+  and committing the slice terminus:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Write(docs/dev-log/2026-06-13-184424-vertical-slice-astro-terminus.md)
+  ⎿  Wrote 137 lines to
+     docs/dev-log/2026-06-13-184424-vertical-slice-astro-terminus.md
+      1 # 2026-06-13 18:44:24 - Cycle 8: Astro Page + Real Build (Slice T
+      2 
+      3 The point of the whole vertical slice. Earlier cycles built a log
+        ic layer; this one drives that
+        an actual `astro build`. Stopping
+      5 before this would have been horizontal slicing in disguise — a ti
+      6 survives contact with the framework. (This was a course-correctio
+        n; see the conversation that
+      7 preceded it.)
+      9 ## Why The Framework Edge Has To Be In The Slice
+     … +160 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Batch complete — the walking skeleton is alive end-to-end through a real Astro
+  build. Six commits, 8/8 tests, tree clean.
+
+  What you can now actually see working
+
+  Run it yourself:
+  npm run build      # builds the static site → dist/
+  # or
+  npm run dev        # then open http://localhost:4321/project/shipped-build
+  /project/shipped-build renders. /project/draft-build (the private one) 404s — 
+  it was never built.
+
+  What the three cycles did
+
+  Cycle: 6
+  Built: exportReadModel + WorkItemStore port
+  The idea: The privacy seam. One place turns the store into a public snapshot.
+    The port was born here because this is the first consumer that needs to swap
+
+    implementations.
+  ────────────────────────────────────────
+  Cycle: 7
+  Built: renderWorkItemDetail
+  The idea: Pure function, item → HTML. Kept out of Astro so it stays tested;
+    HTML-escaping deliberately deferred to its own future cycle.
+  ────────────────────────────────────────
+  Cycle: 8
+  Built: getWorkItemPaths + [id].astro + real build
+  The idea: The terminus. The .astro page is thin glue; privacy is inherited
+  from
+     the export, not re-implemented. Proven by an actual astro build.
+
+  The proof that matters
+
+  The private item produced no file at all in dist/. That's the whole point of
+  keeping the bake (ROADMAP §2): privacy isn't a runtime promise that one bad
+  query could break — non-public data is physically absent from the built site.
+  We proved it at the real framework boundary, exactly as you insisted.
+
+  Honest about the scaffolding (so it's not forgotten)
+
+  The slice is at step 4 of 5 — it's a walking skeleton, not yet real
+  top-to-bottom:
+  - src/app/sample-data.ts is a temporary build-time data source (clearly
+  labelled).
+  - Routing is by id, not pretty slug yet.
+
+  Cycle 9 closes it: replace sample-data.ts with a filesystem snapshot adapter
+  that implements WorkItemStore, tested for real against a temp directory (owned
+  infra, not mocked). After that, the slice is genuinely real: persisted file →
+  privacy gate → built page.
+
+  Want me to keep rolling into Cycle 9 and finish the slice for real, same
+  drive-and-log rhythm?
+
+✻ Baked for 8m 21s
+
+❯ can you update AGENTS.md with our current state so that when i hop on another 
+  laptop with a different LLM CLI, it doesn't drift from where we're at and     
+  continues in the same manner we're doing?                                     
+
+● Good call — that file is the portable handoff, and right now everything that
+  prevents drift (the decisions, the working rhythm) lives in my Claude-only
+  memory and KB, which won't travel to another machine or CLI. Let me ground the
+  "current state" section in reality first, then write it.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now I'll write the portable handoff. It embeds the things that won't travel
+  (the TDD rules, the decisions, the rhythm) so any agent on any machine
+  continues identically:
+
+● Write(AGENTS.md)
+  ⎿  Wrote 179 lines to AGENTS.md
+      1 # AGENTS.md — how to work on this project (read this first)
+      3 This is the portable, checked-in onboarding for any AI agent (any
+         CLI, any machine). It exists so
+      4 work continues in the **same manner** regardless of which tool pi
+      5 conflicts with an agent's own memory or a knowledge base, **this 
+        file and the `docs/` artifacts
+      7 
+      8 > Keep this file current. After each batch of work, update the **
+        Current State** and **Next Step**
+        anism.
+     … +259 lines (ctrl+o to expand)
+
+● Committing the handoff:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Done — AGENTS.md is now the portable handoff (committed 4ce06da, tree clean).
+  CLAUDE.md already @AGENTS.md-includes it, so any Claude session loads it
+  automatically, and any other CLI reads AGENTS.md by convention.
+
+  The key thing I did: everything that would otherwise be lost on the hop is now
+  baked into the repo itself. The decisions and rhythm were living in my
+  Claude-only memory and the KB playbook — neither travels to another laptop or
+  a different LLM. So AGENTS.md embeds:
+
+  - The prime directive (privacy default-deny, enforced once at export, proven
+  by the build).
+  - Doc reading order + the answer-key repo location.
+  - The CLEANROOM_SPEC warning — treat its "accident — do not port" verdicts as
+  claims to re-derive, not commands. This is the anti-cargo-cult guardrail that
+  started this whole thread.
+  - The decisions that override the spec: keep the bake, keep the catch-all
+  (only inference dies), default-deny visibility, sort by recency.
+  - The full TDD method inline (the RED/GREEN/REFACTOR rules, hard rules,
+  clean-arch direction, vertical-slice discipline) — copied out of the
+  Claude-only KB so a different CLI follows it identically.
+  - The working rhythm: agent drives each cycle, logs every iteration to
+  docs/dev-log/, surfaces reasoning, doesn't make you type.
+  - Dev-log format + commit conventions so output stays consistent.
+  - A live Current State section (8 tests, slice step 4/5, the scaffolding to
+  unwind, the tsconfig caveat) and Next Step (Cycle 9).
+
+  There's a built-in anti-drift instruction at the top: update the Current State
+  / Next Step sections after each batch. I'll keep doing that as we go.
+
+  One caveat to flag honestly: a non-Claude CLI won't have the kb/memory
+  tooling, but it doesn't need it now — the method is self-contained in
+  AGENTS.md. The only Claude-specific bits left (the KB playbook, my memory
+  files) are now redundant with the repo, not load-bearing.
+
+  Want me to roll into Cycle 9 (filesystem adapter — makes the slice real and
+  deletes the sample-data.ts scaffold), or pause here?
+
+✻ Brewed for 1m 54s

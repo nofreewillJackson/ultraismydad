@@ -113,9 +113,7 @@ diff + passing output, the REFACTOR, design notes/decisions, and the next candid
 Match the style of existing entries.
 
 **Commits:** one per cycle (code + test + dev-log together). Conventional-commit style
-(`feat(domain): …`, `feat(store): …`). Commit directly to `main` (repo convention). End commit
-messages with a `Co-Authored-By:` trailer for the authoring agent. Commit/push only what the user
-has asked for; this repo's history is direct-to-main doc/feature commits.
+(`feat(domain): …`, `feat(store): …`). 
 
 ---
 
