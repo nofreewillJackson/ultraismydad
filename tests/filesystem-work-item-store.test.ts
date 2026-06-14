@@ -53,4 +53,13 @@ describe("filesystem work item store", () => {
 
     expect(item.slug).toBe("loaded-item");
   });
+
+  it("rejects a snapshot whose top-level JSON is not an array", async () => {
+    const path = join(dir, "work-items.json");
+    await writeFile(path, JSON.stringify({ not: "an array" }), "utf8");
+
+    const store = new FilesystemWorkItemStore(path);
+
+    await expect(store.list()).rejects.toThrow(/array/i);
+  });
 });

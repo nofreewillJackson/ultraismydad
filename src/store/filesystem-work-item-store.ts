@@ -16,18 +16,26 @@ export class FilesystemWorkItemStore implements WorkItemStore {
   }
 
   async list(): Promise<WorkItem[]> {
+    // ENOENT guards only the read: a missing snapshot means "no items yet".
+    let raw: string;
     try {
-      // Persisted rows are raw, possibly-partial input — not yet domain
-      // objects. Reconstitute each through createWorkItem so the port's
-      // contract (valid WorkItems) holds no matter what is on disk. The
-      // rules stay in the domain; the store just honors them on read.
-      const rows = JSON.parse(await readFile(this.filePath, "utf8")) as CreateWorkItemInput[];
-      return rows.map(createWorkItem);
+      raw = await readFile(this.filePath, "utf8");
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") {
         return [];
       }
       throw error;
     }
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      throw new Error(`snapshot at ${this.filePath} must be a JSON array`);
+    }
+
+    // Persisted rows are raw, possibly-partial input — not yet domain objects.
+    // Reconstitute each through createWorkItem so the port's contract (valid
+    // WorkItems) holds no matter what is on disk. The rules stay in the domain;
+    // the store just honors them on read.
+    return (parsed as CreateWorkItemInput[]).map(createWorkItem);
   }
 }

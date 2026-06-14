@@ -67,29 +67,31 @@ export async function getStaticPaths() {
 
 The page file does not decide privacy. It only connects Astro to the tested app code.
 
-## Step 1: the filesystem store reads JSON
+## Step 1: the filesystem store reads JSON and turns it into real work items
 
 `FilesystemWorkItemStore` is the adapter that knows how to read and write a JSON file.
 
 ```ts
 // src/store/filesystem-work-item-store.ts
 async list(): Promise<WorkItem[]> {
-  return JSON.parse(await readFile(this.filePath, "utf8")) as WorkItem[];
+  const parsed = JSON.parse(await readFile(this.filePath, "utf8"));
+  return (parsed as CreateWorkItemInput[]).map(createWorkItem);
 }
 ```
 
-The important part is the cast:
+The important part is that the store no longer says:
 
 ```ts
 as WorkItem[]
 ```
 
-That cast tells TypeScript, "trust me, this JSON is already valid work-item data."
+That old cast told TypeScript, "trust me, this JSON is already valid work-item data."
 
-It does not actually validate or repair the data at runtime. If the file is missing a field,
-the loaded object is missing that field too.
+That was false. A cast does not repair data at runtime. If the file was missing a field, the
+loaded object was still missing that field.
 
-This is why read-time normalization is a known upcoming need.
+The store now treats JSON rows as raw input and runs each row through `createWorkItem()`.
+That means normal domain defaults apply when old or hand-authored rows are loaded.
 
 ## Step 2: the export read model applies privacy
 
@@ -231,60 +233,98 @@ to:
 
 then every loaded public work item must have a real runtime `slug`.
 
-## The read-normalization problem
+## What got fixed, in normal words
 
-The risk is not just "the sample JSON forgot a slug."
+The original problem was not "one JSON file forgot one field."
 
-The real issue is:
-
-```txt
-raw persisted JSON is being trusted as if it already matches the current WorkItem domain type
-```
-
-That is fragile because the domain can evolve. Fields like `slug`, `productLineId`, `title`,
-or `visibility` may have defaults in `createWorkItem()`, but rows loaded directly from JSON
-do not receive those defaults unless the store applies them.
-
-The durable fix is read-time normalization:
+The real problem was this:
 
 ```txt
-raw JSON row
-  -> apply domain defaults and validation
-  -> valid WorkItem
+the app said "these loaded rows are valid WorkItems"
+but it had not actually made them valid WorkItems
 ```
 
-In practical terms, `FilesystemWorkItemStore.list()` should eventually parse raw rows and
-convert each one through the same domain rules used when creating a work item.
+That matters because the public build depends on loaded rows. If the source file has old or
+partial records, the build still needs to know what to do with them.
 
-That would let old-shaped persisted JSON keep working as the domain grows.
-
-## Why this was not immediately added
-
-The project is using strict TDD: one behavior per cycle.
-
-The slug cycle proved:
+Before the fix:
 
 ```txt
-createWorkItem derives a slug when none is provided
+data/work-items.json row with no slug
+  -> FilesystemWorkItemStore.list()
+  -> object still has slug: undefined
+  -> TypeScript pretends slug is a string
 ```
 
-It did not prove:
+After the fix:
 
 ```txt
-FilesystemWorkItemStore normalizes old JSON rows on read
+data/work-items.json row with no slug
+  -> FilesystemWorkItemStore.list()
+  -> createWorkItem(row)
+  -> object has slug: "loaded-item"
 ```
 
-Those are related, but they are different behaviors. The second behavior deserves its own
-RED -> GREEN -> REFACTOR cycle before slug routing depends on it.
+So this was a boundary fix. The filesystem boundary now converts loose JSON into proper
+domain objects before the rest of the app uses them.
 
-A good upcoming cycle would be:
+That is the same idea as checking your groceries at the door before you cook with them. The
+kitchen can stay simple because the bad or incomplete stuff gets handled at the entrance.
+
+## Why this matters in the grand picture
+
+This fix matters because the app is moving toward URLs based on slugs:
 
 ```txt
-FilesystemWorkItemStore.list() derives a missing slug for an old-shaped JSON row
+/project/<slug>/
 ```
 
-Then later cycles can decide what to do with missing titles, missing visibility, invalid
-visibility, explicit stored slugs, malformed JSON, and unknown fields.
+Right now pages still use ids:
+
+```txt
+/project/<id>/
+```
+
+So the missing-slug problem was not breaking the current public site yet. But it would have
+broken the next obvious step: slug routing.
+
+The fix also matters beyond slugs. It sets a rule for the whole rebuild:
+
+```txt
+raw storage data is not automatically trusted
+```
+
+That rule is worth keeping. The source data will keep changing shape as the rebuild grows.
+The app should not silently pretend old rows are valid just because TypeScript was told to
+believe it.
+
+## Was this busywork?
+
+No, this one was not busywork.
+
+It did not add a shiny feature, but it protected the build path that every public page depends
+on:
+
+```txt
+source JSON -> valid work items -> privacy gate -> public pages
+```
+
+If that first arrow lies, everything after it can look clean while being wrong.
+
+That is why this mattered before `/project/<slug>` routing.
+
+At the same time, this should not turn into endless "harden everything" work. Each hardening
+step should earn its keep by protecting a real boundary:
+
+- Missing `slug`: worth fixing because slug URLs are coming next.
+- Missing `id`: worth rejecting because an item without identity cannot become a stable page.
+- Top-level JSON not being an array: worth rejecting because the store cannot list items from
+  a non-list.
+- Hypothetical edge cases with no current consequence: write them down, but do not disappear
+  into them.
+
+The point is not to make the JSON reader fancy. The point is to make sure the build either
+gets real work items or fails clearly before publishing.
 
 ## The mental model to keep
 
@@ -295,7 +335,7 @@ Domain creation boundary:
   createWorkItem(input) -> valid WorkItem
 
 Persistence read boundary:
-  JSON on disk -> FilesystemWorkItemStore.list() -> should also become valid WorkItem
+  JSON on disk -> FilesystemWorkItemStore.list() -> valid WorkItem[]
 
 Public export boundary:
   all WorkItems -> exportReadModel() -> only public read model
@@ -304,10 +344,23 @@ Static rendering boundary:
   public read model -> Astro build -> dist/ files
 ```
 
-The slug issue lives at the persistence read boundary.
+The slug fix lives at the persistence read boundary.
 
 The privacy rule lives at the public export boundary.
 
 The generated pages live at the static rendering boundary.
 
 Keeping those boundaries separate is what makes the rebuild understandable.
+
+## How to decide if a future fix matters
+
+Ask these questions before letting the work expand:
+
+1. Does this protect private data from reaching public output?
+2. Does this prevent the static build from producing broken pages?
+3. Does this make a future near-term behavior possible, like slug routes?
+4. Does this replace a lie at a boundary with a real checked behavior?
+
+If the answer is yes, it is probably worth a focused TDD cycle.
+
+If the answer is "maybe someday," park it and keep building visible behavior.
