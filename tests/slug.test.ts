@@ -6,4 +6,8 @@ describe("slugify", () => {
   it("strips leading and trailing separators", () => {
     expect(slugify("  Hello World  ")).toBe("hello-world");
   });
+
+  it("truncates to 80 characters", () => {
+    expect(slugify("a".repeat(100))).toHaveLength(80);
+  });
 });
