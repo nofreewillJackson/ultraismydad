@@ -135,9 +135,9 @@ the gate. Fixing the tsconfig (likely `moduleResolution: "bundler"`) is a separa
 
 ---
 
-## 7. Current state  (last updated: 2026-06-13, after Cycle 9)
+## 7. Current state  (last updated: 2026-06-13, after Cycle 13)
 
-**Tests: 10 passing (7 files). Suite is green. Working tree clean.**
+**Tests: 14 passing (8 files). Suite is green. Working tree clean.**
 
 The **first vertical slice is complete (5/5)** (ROADMAP Phase 2): a persisted JSON snapshot →
 `list()` → export (privacy gate) → render → real Astro page. Proven by a real `astro build`: the
@@ -156,9 +156,13 @@ Cycles completed:
 - 9 — `FilesystemWorkItemStore` (real temp-dir tests: missing-file→empty, then save/list round-trip
   across fresh instances); wired the page to `data/work-items.json`; deleted the `sample-data.ts`
   scaffold. Slice is real top-to-bottom.
+- 10–13 — **Section A slugs** (broadening the domain). `slugify` built by triangulation across its
+  own cycles (lowercase+hyphenate → trim ends → cap 80); `createWorkItem` derives a slug from the
+  (defaulted) title and preserves an explicit one. Slug is **identity** (pinned URL key), stored on
+  the item, not recomputed at render.
 
 Source layout:
-- `src/domain/` — pure rules (`work-item.ts`, `privacy-gate.ts`).
+- `src/domain/` — pure rules (`work-item.ts`, `privacy-gate.ts`, `slug.ts`).
 - `src/store/` — `work-item-store.ts` (port), `in-memory-work-item-store.ts` (adapter, used in
   tests), `filesystem-work-item-store.ts` (adapter, the build's real data source).
 - `src/app/` — `export-read-model.ts`, `work-item-pages.ts`.
@@ -169,7 +173,9 @@ Source layout:
   including private; the export gate is what omits private ones).
 
 **Known shortcuts to unwind (do not mistake for finished work):**
-- Routing is by **`id`, not `slug`** — slug generation + `/project/<slug>` is a later cycle.
+- Routing is by **`id`, not `slug`** — work-item slug *generation* now exists (Cycles 10–13), but
+  the Astro route still keys on `id`. Switching to `/project/<slug>` also needs the store's read
+  path to normalize loaded JSON (those rows have no `slug` yet).
 - `renderWorkItemDetail` does **no HTML-escaping** yet (deferred XSS trust-boundary cycle).
 - `FilesystemWorkItemStore.list()` returns `[]` on a *missing* file by design (archive starts
   empty; safe direction). A build-integrity gate for the "unexpectedly zero pages" case is a later
@@ -179,9 +185,13 @@ Source layout:
 
 ## 8. Next step
 
-The vertical slice is done. **Return to broadening the domain** via `BEHAVIOR_INVENTORY.md` —
-**section A next: slug generation** (then route `/project/<slug>` instead of by id), "untitled
-entry" naming, slug formatting rules. Drive these as normal RED→GREEN→REFACTOR cycles.
+Work-item slugs (Section A, top) are done. **Continue Section A** with the **log-entry** behaviors:
+log-entry slug from `day-{day}-{title}` when none provided, untitled log entry → "untitled entry",
+and log-slug de-duplication (later collisions get a `-{first 6 chars of id}` suffix). Then series
+name title-casing + alias resolution. Drive these as normal RED→GREEN→REFACTOR cycles.
+
+Then, to make slugs *visible*: route `/project/<slug>` instead of `id`, which first needs the store
+read path to normalize loaded JSON (apply `createWorkItem`-style defaults so loaded rows get slugs).
 
 Other parked behaviors to pick up when natural: HTML-escaping in `renderWorkItemDetail` (XSS), and a
 build-integrity gate (warn/fail on unexpectedly-zero pages). Then ROADMAP Phases 3→7.
