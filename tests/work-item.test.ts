@@ -30,4 +30,13 @@ describe("work item", () => {
 
     expect(workItem.title).toBe("untitled project");
   });
+
+  it("derives a slug from the title when no slug is provided", () => {
+    const workItem = createWorkItem({
+      id: "work-004",
+      title: "Hello World",
+    });
+
+    expect(workItem.slug).toBe("hello-world");
+  });
 });
