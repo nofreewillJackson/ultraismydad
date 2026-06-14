@@ -1,0 +1,14 @@
+[
+  {
+    "id": "shipped-build",
+    "title": "Shipped Build",
+    "productLineId": "catch-all",
+    "visibility": "public"
+  },
+  {
+    "id": "draft-build",
+    "title": "Draft Build",
+    "productLineId": "catch-all",
+    "visibility": "private"
+  }
+]

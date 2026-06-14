@@ -135,14 +135,15 @@ the gate. Fixing the tsconfig (likely `moduleResolution: "bundler"`) is a separa
 
 ---
 
-## 7. Current state  (last updated: 2026-06-13, after Cycle 8)
+## 7. Current state  (last updated: 2026-06-13, after Cycle 9)
 
-**Tests: 8 passing (6 files). Suite is green. Working tree clean.**
+**Tests: 10 passing (7 files). Suite is green. Working tree clean.**
 
-We are building the **first vertical slice** (ROADMAP Phase 2): persist a work item → export
-(privacy gate) → render → real Astro page. **Step 4 of 5 done** — the walking skeleton renders end
-to end through a real `astro build`; a public item produces `dist/project/<id>/index.html`, a
-private item produces no file.
+The **first vertical slice is complete (5/5)** (ROADMAP Phase 2): a persisted JSON snapshot →
+`list()` → export (privacy gate) → render → real Astro page. Proven by a real `astro build`: the
+public item produces `dist/project/<id>/index.html`; the private item — *which is physically present
+in the source file `data/work-items.json`* — produces no file at all. Privacy is now a physical fact
+flowing from a real persisted source, end to end with nothing faked.
 
 Cycles completed:
 - 1–3 — work-item defaults (visibility→private, line→catch-all), privacy gate. (first dev-log)
@@ -152,26 +153,35 @@ Cycles completed:
 - 7 — `renderWorkItemDetail` (pure item→HTML; **HTML-escaping deliberately deferred** to a future
   cycle).
 - 8 — `getWorkItemPaths` + `src/pages/project/[id].astro` + Astro 6 setup; proven by real build.
+- 9 — `FilesystemWorkItemStore` (real temp-dir tests: missing-file→empty, then save/list round-trip
+  across fresh instances); wired the page to `data/work-items.json`; deleted the `sample-data.ts`
+  scaffold. Slice is real top-to-bottom.
 
 Source layout:
 - `src/domain/` — pure rules (`work-item.ts`, `privacy-gate.ts`).
-- `src/store/` — `work-item-store.ts` (port), `in-memory-work-item-store.ts` (adapter).
-- `src/app/` — `export-read-model.ts`, `work-item-pages.ts`, `sample-data.ts` (scaffold).
+- `src/store/` — `work-item-store.ts` (port), `in-memory-work-item-store.ts` (adapter, used in
+  tests), `filesystem-work-item-store.ts` (adapter, the build's real data source).
+- `src/app/` — `export-read-model.ts`, `work-item-pages.ts`.
 - `src/render/` — `work-item-detail.ts`.
-- `src/pages/project/[id].astro` — thin framework glue.
+- `src/pages/project/[id].astro` — thin framework glue (constructs the FS store *inside*
+  `getStaticPaths`; Astro isolates that scope, so a module-level const is invisible to it).
+- `data/work-items.json` — the single snapshot source for this environment (contains all items,
+  including private; the export gate is what omits private ones).
 
-**Scaffolding to unwind (do not mistake for finished work):**
-- `src/app/sample-data.ts` — temporary build-time data; replaced by the filesystem adapter (Cycle 9).
+**Known shortcuts to unwind (do not mistake for finished work):**
 - Routing is by **`id`, not `slug`** — slug generation + `/project/<slug>` is a later cycle.
+- `renderWorkItemDetail` does **no HTML-escaping** yet (deferred XSS trust-boundary cycle).
+- `FilesystemWorkItemStore.list()` returns `[]` on a *missing* file by design (archive starts
+  empty; safe direction). A build-integrity gate for the "unexpectedly zero pages" case is a later
+  phase, not the adapter's job.
 
 ---
 
 ## 8. Next step
 
-**Cycle 9 — filesystem snapshot adapter.** Implement `WorkItemStore` backed by a JSON snapshot file
-(one source per environment; no fallback cascade, no machine-specific paths). Test it for real
-against a temp directory (owned infrastructure — not mocked). Then point the Astro page at it and
-delete `sample-data.ts`. After that the slice is real top-to-bottom (persisted file → built page).
+The vertical slice is done. **Return to broadening the domain** via `BEHAVIOR_INVENTORY.md` —
+**section A next: slug generation** (then route `/project/<slug>` instead of by id), "untitled
+entry" naming, slug formatting rules. Drive these as normal RED→GREEN→REFACTOR cycles.
 
-After the slice is real, return to broadening the domain via `BEHAVIOR_INVENTORY.md` (section A
-next: slug generation, "untitled entry", slug formatting rules), then ROADMAP Phases 3→7.
+Other parked behaviors to pick up when natural: HTML-escaping in `renderWorkItemDetail` (XSS), and a
+build-integrity gate (warn/fail on unexpectedly-zero pages). Then ROADMAP Phases 3→7.

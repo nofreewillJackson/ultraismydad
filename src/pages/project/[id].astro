@@ -1,12 +1,16 @@
 ---
 import { getWorkItemPaths } from "../../app/work-item-pages";
-import { sampleStore } from "../../app/sample-data";
+import { FilesystemWorkItemStore } from "../../store/filesystem-work-item-store";
 
 // Thin glue: the framework boundary calls our tested use case. No business
 // logic lives here — which items become pages is decided by the export
 // (privacy gate), and the HTML is produced by the render function.
+//
+// The data source is the single filesystem snapshot for this environment
+// (one source, no fallback cascade). It contains every item — public AND
+// private — and the export's privacy gate is what omits the private ones.
 export async function getStaticPaths() {
-  return getWorkItemPaths(await sampleStore());
+  return getWorkItemPaths(new FilesystemWorkItemStore("data/work-items.json"));
 }
 
 const { html } = Astro.props;
