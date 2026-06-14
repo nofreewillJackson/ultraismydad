@@ -18,7 +18,7 @@ data/work-items.json
   -> privacy gate
   -> getWorkItemPaths()
   -> Astro getStaticPaths()
-  -> dist/project/<id>/index.html
+  -> dist/project/<slug>/index.html
 ```
 
 The JSON file is build input. It is not the final website.
@@ -42,13 +42,13 @@ Example shape:
 ```json
 [
   {
-    "id": "shipped-build",
+    "id": "wi-001",
     "title": "Shipped Build",
     "productLineId": "catch-all",
     "visibility": "public"
   },
   {
-    "id": "draft-build",
+    "id": "wi-002",
     "title": "Draft Build",
     "productLineId": "catch-all",
     "visibility": "private"
@@ -56,10 +56,14 @@ Example shape:
 ]
 ```
 
+Note the `id` is an opaque key; the URL a visitor sees is the *slug* (derived from the title). The
+ids here (`wi-001`, `wi-002`) deliberately differ from the slugs (`shipped-build`, `draft-build`) so
+the build visibly proves the route keys on slug, not id.
+
 When `npm run build` runs, Astro asks the project route which pages exist. That starts here:
 
 ```ts
-// src/pages/project/[id].astro
+// src/pages/project/[slug].astro
 export async function getStaticPaths() {
   return getWorkItemPaths(new FilesystemWorkItemStore("data/work-items.json"));
 }
@@ -121,26 +125,27 @@ definition:
 ```ts
 // src/app/work-item-pages.ts
 return workItems.map((workItem) => ({
-  params: { id: workItem.id },
+  params: { slug: workItem.slug },
   props: { html: renderWorkItemDetail(workItem) },
 }));
 ```
 
-Right now the URL key is `id`.
+The URL key is the `slug`.
 
 So a public item with:
 
 ```json
-{ "id": "shipped-build" }
+{ "id": "wi-001", "title": "Shipped Build" }
 ```
 
-becomes:
+gets the slug `shipped-build` and becomes:
 
 ```txt
 /project/shipped-build/
 ```
 
-That page is physically written during the static build.
+Note the page lives at the slug, not the opaque id `wi-001`. That page is physically written during
+the static build.
 
 ## Step 4: Astro writes static files
 
@@ -214,27 +219,23 @@ old item loaded from data/work-items.json
 ```
 
 After the fix, loaded rows also go through `createWorkItem()`, so the final `WorkItem`
-objects should have slugs even when the raw JSON did not.
+objects have slugs even when the raw JSON did not.
 
-Right now the app still routes by `id`, so this does not break the build:
+The app now routes by `slug`:
 
 ```ts
-params: { id: workItem.id }
+params: { slug: workItem.slug }
 ```
 
-But when the route changes from:
-
-```txt
-/project/<id>/
-```
-
-to:
+so the route is:
 
 ```txt
 /project/<slug>/
 ```
 
-then every loaded public work item must have a real runtime `slug`.
+This is exactly why the read-boundary fix had to come first: every loaded public work item must
+have a real runtime `slug`, and the normalization on read is what guarantees it (the raw JSON rows
+still carry no `slug` field — `createWorkItem` derives it as each row is loaded).
 
 ## What got fixed, in normal words
 
@@ -276,20 +277,15 @@ kitchen can stay simple because the bad or incomplete stuff gets handled at the 
 
 ## Why this matters in the grand picture
 
-This fix matters because the app is moving toward URLs based on slugs:
+This fix matters because the app now serves URLs based on slugs:
 
 ```txt
 /project/<slug>/
 ```
 
-Right now pages still use ids:
-
-```txt
-/project/<id>/
-```
-
-So the missing-slug problem was not breaking the current public site yet. But it would have
-broken the next obvious step: slug routing.
+The missing-slug problem was not breaking the *id*-routed site that existed at the time. But it
+would have broken the very next step — slug routing — which is exactly the step we took right after
+(the route now keys on `slug`). The fix had to land first so that step was safe.
 
 The fix also matters beyond slugs. It sets a rule for the whole rebuild:
 
@@ -314,7 +310,7 @@ source JSON -> valid work items -> privacy gate -> public pages
 
 If that first arrow lies, everything after it can look clean while being wrong.
 
-That is why this mattered before `/project/<slug>` routing.
+That is why this mattered before enabling `/project/<slug>` routing (now done).
 
 At the same time, this should not turn into endless "harden everything" work. Each hardening
 step should earn its keep by protecting a real boundary:

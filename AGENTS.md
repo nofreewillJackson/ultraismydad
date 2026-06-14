@@ -135,15 +135,15 @@ the gate. Fixing the tsconfig (likely `moduleResolution: "bundler"`) is a separa
 
 ---
 
-## 7. Current state  (last updated: 2026-06-13, after Cycle 16)
+## 7. Current state  (last updated: 2026-06-13, after Cycle 17)
 
 **Tests: 17 passing (8 files). Suite is green. Working tree clean.**
 
 The **first vertical slice is complete (5/5)** (ROADMAP Phase 2): a persisted JSON snapshot →
 `list()` → export (privacy gate) → render → real Astro page. Proven by a real `astro build`: the
-public item produces `dist/project/<id>/index.html`; the private item — *which is physically present
-in the source file `data/work-items.json`* — produces no file at all. Privacy is now a physical fact
-flowing from a real persisted source, end to end with nothing faked.
+public item produces `dist/project/<slug>/index.html`; the private item — *which is physically
+present in the source file `data/work-items.json`* — produces no file at all. Privacy is now a
+physical fact flowing from a real persisted source, end to end with nothing faked.
 
 Cycles completed:
 - 1–3 — work-item defaults (visibility→private, line→catch-all), privacy gate. (first dev-log)
@@ -152,7 +152,8 @@ Cycles completed:
 - 6 — `exportReadModel` + `WorkItemStore` port (the privacy seam; `{ workItems }` snapshot).
 - 7 — `renderWorkItemDetail` (pure item→HTML; **HTML-escaping deliberately deferred** to a future
   cycle).
-- 8 — `getWorkItemPaths` + `src/pages/project/[id].astro` + Astro 6 setup; proven by real build.
+- 8 — `getWorkItemPaths` + the project route page (`[id].astro`, *renamed `[slug].astro` in Cycle
+  17*) + Astro 6 setup; proven by real build.
 - 9 — `FilesystemWorkItemStore` (real temp-dir tests: missing-file→empty, then save/list round-trip
   across fresh instances); wired the page to `data/work-items.json`; deleted the `sample-data.ts`
   scaffold. Slice is real top-to-bottom.
@@ -169,6 +170,10 @@ Cycles completed:
   bake-as-integrity-gate). 16: FS store throws a clear `snapshot … must be a JSON array` on a
   non-array file (file-format concern → store), and the `try` was scoped to the read so `ENOENT`
   no longer spans parse/normalize.
+- 17 — **route by slug** (retired the id-routing scaffold from Cycle 8). `getWorkItemPaths` now keys
+  on `workItem.slug`; route file renamed `[id].astro` → `[slug].astro`. Proven by build: public item
+  (opaque id `wi-001`) is served at `/project/shipped-build/` — its slug, not its id; private item
+  still produces no page.
 
 Source layout:
 - `src/domain/` — pure rules (`work-item.ts`, `privacy-gate.ts`, `slug.ts`).
@@ -176,14 +181,12 @@ Source layout:
   tests), `filesystem-work-item-store.ts` (adapter, the build's real data source).
 - `src/app/` — `export-read-model.ts`, `work-item-pages.ts`.
 - `src/render/` — `work-item-detail.ts`.
-- `src/pages/project/[id].astro` — thin framework glue (constructs the FS store *inside*
-  `getStaticPaths`; Astro isolates that scope, so a module-level const is invisible to it).
+- `src/pages/project/[slug].astro` — thin framework glue, routes by slug (constructs the FS store
+  *inside* `getStaticPaths`; Astro isolates that scope, so a module-level const is invisible to it).
 - `data/work-items.json` — the single snapshot source for this environment (contains all items,
-  including private; the export gate is what omits private ones).
+  including private; ids are opaque, the URL is the derived slug; the export gate omits private ones).
 
 **Known shortcuts to unwind (do not mistake for finished work):**
-- Routing is by **`id`, not `slug`** — slug generation (10–13) and read-path normalization (14) both
-  exist now, so `/project/<slug>` is **unblocked**; the Astro route just still keys on `id`.
 - `renderWorkItemDetail` does **no HTML-escaping** yet (deferred XSS trust-boundary cycle).
 - **Read boundary** now: missing file → `[]`; non-array JSON → clear error (16); rows normalized
   through the domain (14), which rejects an id-less row (15). Remaining nicety (not a hole):
@@ -197,13 +200,14 @@ Source layout:
 
 ## 8. Next step
 
-Read boundary is hardened (14–16). **Continue Section A — log entries**: log-entry slug from
-`day-{day}-{title}` when none provided, untitled log entry → "untitled entry", log-slug
-de-duplication (later collisions get a `-{first 6 chars of id}` suffix). Then series name
-title-casing + alias resolution. Drive as normal RED→GREEN→REFACTOR cycles, rejection-first.
+Work-item slugs, the read boundary, and slug routing are all done (10–17). **Continue Section A —
+log entries**: log-entry slug from `day-{day}-{title}` when none provided, untitled log entry →
+"untitled entry", log-slug de-duplication (later collisions get a `-{first 6 chars of id}` suffix).
+Then series name title-casing + alias resolution. Drive as normal RED→GREEN→REFACTOR cycles,
+rejection-first.
 
-Then, to make slugs *visible*: route `/project/<slug>` instead of `id` (unblocked since Cycle 14 —
-loaded items carry slugs).
+(Parked, pick up when natural: HTML-escaping in `renderWorkItemDetail`; wrap malformed-JSON parse
+errors with the snapshot path; build-integrity gate for "unexpectedly zero pages". Then Phases 3→7.)
 
 Other parked behaviors to pick up when natural: HTML-escaping in `renderWorkItemDetail` (XSS), and a
 build-integrity gate (warn/fail on unexpectedly-zero pages). Then ROADMAP Phases 3→7.

@@ -4,7 +4,9 @@ import { FilesystemWorkItemStore } from "../../store/filesystem-work-item-store"
 
 // Thin glue: the framework boundary calls our tested use case. No business
 // logic lives here — which items become pages is decided by the export
-// (privacy gate), and the HTML is produced by the render function.
+// (privacy gate), the URL key is the item's slug, and the HTML is produced by
+// the render function. The [slug] filename binds to params.slug returned by
+// getWorkItemPaths.
 //
 // The data source is the single filesystem snapshot for this environment
 // (one source, no fallback cascade). It contains every item — public AND

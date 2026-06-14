@@ -5,18 +5,20 @@ import { InMemoryWorkItemStore } from "../src/store/in-memory-work-item-store";
 import { getWorkItemPaths } from "../src/app/work-item-pages";
 
 describe("work item pages", () => {
-  it("builds a page only for each public work item, carrying its rendered html", async () => {
+  it("builds a page only for each public work item, keyed by slug, carrying its rendered html", async () => {
     const store = new InMemoryWorkItemStore();
+    // id and slug deliberately differ: id is an opaque key, slug is derived
+    // from the title. Asserting on slug proves the route keys on slug, not id.
     await store.save(
       createWorkItem({
-        id: "shipped-build",
+        id: "wi-001",
         title: "Shipped Build",
         visibility: "public",
       }),
     );
     await store.save(
       createWorkItem({
-        id: "draft-build",
+        id: "wi-002",
         title: "Draft Build",
         visibility: "private",
       }),
@@ -25,7 +27,7 @@ describe("work item pages", () => {
     const paths = await getWorkItemPaths(store);
 
     expect(paths).toHaveLength(1);
-    expect(paths[0].params.id).toBe("shipped-build");
+    expect(paths[0].params.slug).toBe("shipped-build");
     expect(paths[0].props.html).toContain("<h1>Shipped Build</h1>");
   });
 });
