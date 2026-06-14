@@ -39,4 +39,14 @@ describe("work item", () => {
 
     expect(workItem.slug).toBe("hello-world");
   });
+
+  it("preserves an explicitly provided slug", () => {
+    const workItem = createWorkItem({
+      id: "work-005",
+      title: "Hello World",
+      slug: "pinned-url-key",
+    });
+
+    expect(workItem.slug).toBe("pinned-url-key");
+  });
 });
