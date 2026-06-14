@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -36,5 +36,21 @@ describe("filesystem work item store", () => {
 
     const reopened = new FilesystemWorkItemStore(path);
     expect(await reopened.list()).toEqual([workItem]);
+  });
+
+  it("normalizes a loaded row with no slug by deriving one from its title", async () => {
+    const path = join(dir, "work-items.json");
+    // A hand-authored row — exactly the shape of data/work-items.json: no slug.
+    await writeFile(
+      path,
+      JSON.stringify([
+        { id: "loaded-001", title: "Loaded Item", productLineId: "catch-all", visibility: "public" },
+      ]),
+      "utf8",
+    );
+
+    const [item] = await new FilesystemWorkItemStore(path).list();
+
+    expect(item.slug).toBe("loaded-item");
   });
 });

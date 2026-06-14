@@ -47,6 +47,10 @@ old one to check our answers.
 | **The old app** | `~/dev/projects/artluai-pre-cleanroom` | The finished, messy original | Run it, poke it, see how it behaves. Your answer key. |
 | **Your rebuild** | this folder (`ultraismydad`) | Mostly empty. You're filling it in. | Where you write tests + code, one behavior at a time. |
 
+For the current rebuild's data flow, read `APP_FLOW.md`. It explains how
+`data/work-items.json` becomes static pages in `dist/`, where the privacy gate runs, and why
+slug routing depends on normalizing JSON rows when they are read.
+
 Try running the old one right now, just to see it's real:
 
 ```sh
