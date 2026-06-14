@@ -201,9 +201,9 @@ slug: input.slug || slugify(title)
 
 That means a newly created work item gets a `slug`.
 
-But existing rows in `data/work-items.json` do not currently have `slug`.
+Existing rows in `data/work-items.json` do not currently have `slug`.
 
-That creates an important difference:
+Before the read-boundary fix, that created an important difference:
 
 ```txt
 new item made through createWorkItem()
@@ -212,6 +212,9 @@ new item made through createWorkItem()
 old item loaded from data/work-items.json
   -> may not have slug
 ```
+
+After the fix, loaded rows also go through `createWorkItem()`, so the final `WorkItem`
+objects should have slugs even when the raw JSON did not.
 
 Right now the app still routes by `id`, so this does not break the build:
 

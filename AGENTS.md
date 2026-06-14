@@ -135,9 +135,9 @@ the gate. Fixing the tsconfig (likely `moduleResolution: "bundler"`) is a separa
 
 ---
 
-## 7. Current state  (last updated: 2026-06-13, after Cycle 14)
+## 7. Current state  (last updated: 2026-06-13, after Cycle 16)
 
-**Tests: 15 passing (8 files). Suite is green. Working tree clean.**
+**Tests: 17 passing (8 files). Suite is green. Working tree clean.**
 
 The **first vertical slice is complete (5/5)** (ROADMAP Phase 2): a persisted JSON snapshot →
 `list()` → export (privacy gate) → render → real Astro page. Proven by a real `astro build`: the
@@ -164,6 +164,11 @@ Cycles completed:
   (rows have no slug → `slug: undefined` behind a `string` type; a glass invariant the suite couldn't
   see). `list()` now reconstitutes each row via `createWorkItem` (tolerant reader / strict writer;
   rules stay in the domain). Cast is now the honest `as CreateWorkItemInput[]`.
+- 15–16 — **trust-boundary hardening** (rejection-first). 15: `createWorkItem` throws on missing/empty
+  `id` (domain invariant — guard at the one front door; makes a corrupt row fail the build loudly =
+  bake-as-integrity-gate). 16: FS store throws a clear `snapshot … must be a JSON array` on a
+  non-array file (file-format concern → store), and the `try` was scoped to the read so `ENOENT`
+  no longer spans parse/normalize.
 
 Source layout:
 - `src/domain/` — pure rules (`work-item.ts`, `privacy-gate.ts`, `slug.ts`).
@@ -180,9 +185,10 @@ Source layout:
 - Routing is by **`id`, not `slug`** — slug generation (10–13) and read-path normalization (14) both
   exist now, so `/project/<slug>` is **unblocked**; the Astro route just still keys on `id`.
 - `renderWorkItemDetail` does **no HTML-escaping** yet (deferred XSS trust-boundary cycle).
-- **Read boundary is honest but not bulletproof.** `list()` normalizes shape, but does *not* yet
-  reject a row missing `id`, nor handle malformed/non-array JSON deliberately (both currently throw
-  raw). These are pending trust-boundary cycles (rejection tests — do these *before* slug routing).
+- **Read boundary** now: missing file → `[]`; non-array JSON → clear error (16); rows normalized
+  through the domain (14), which rejects an id-less row (15). Remaining nicety (not a hole):
+  malformed JSON still propagates as a stock `SyntaxError` — wrap it with the path only if a real
+  need shows up.
 - `FilesystemWorkItemStore.list()` returns `[]` on a *missing* file by design (archive starts
   empty; safe direction). A build-integrity gate for the "unexpectedly zero pages" case is a later
   phase, not the adapter's job.
@@ -191,17 +197,13 @@ Source layout:
 
 ## 8. Next step
 
-Two honest options (pick per appetite):
+Read boundary is hardened (14–16). **Continue Section A — log entries**: log-entry slug from
+`day-{day}-{title}` when none provided, untitled log entry → "untitled entry", log-slug
+de-duplication (later collisions get a `-{first 6 chars of id}` suffix). Then series name
+title-casing + alias resolution. Drive as normal RED→GREEN→REFACTOR cycles, rejection-first.
 
-1. **Harden the read boundary** (recommended — trust-boundary tests come first): reject a loaded row
-   missing `id`; handle malformed/non-array snapshot JSON deliberately instead of a raw throw. These
-   are the rejection cycles surfaced while fixing Cycle 14.
-2. **Continue Section A — log entries**: log-entry slug from `day-{day}-{title}` when none provided,
-   untitled log entry → "untitled entry", log-slug de-duplication (`-{first 6 chars of id}` suffix).
-   Then series name title-casing + alias resolution.
-
-Then, to make slugs *visible*: route `/project/<slug>` instead of `id` (now unblocked — loaded items
-carry slugs after Cycle 14).
+Then, to make slugs *visible*: route `/project/<slug>` instead of `id` (unblocked since Cycle 14 —
+loaded items carry slugs).
 
 Other parked behaviors to pick up when natural: HTML-escaping in `renderWorkItemDetail` (XSS), and a
 build-integrity gate (warn/fail on unexpectedly-zero pages). Then ROADMAP Phases 3→7.
