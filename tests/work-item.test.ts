@@ -49,4 +49,8 @@ describe("work item", () => {
 
     expect(workItem.slug).toBe("pinned-url-key");
   });
+
+  it("rejects a work item with no id", () => {
+    expect(() => createWorkItem({ id: "", title: "Anything" })).toThrow(/id/i);
+  });
 });

@@ -23,6 +23,9 @@ export type WorkItem = {
 };
 
 export function createWorkItem(input: CreateWorkItemInput): WorkItem {
+  if (!input.id) {
+    throw new Error("work item requires an id");
+  }
   const title = input.title || DEFAULT_WORK_ITEM_TITLE;
   return {
     ...input,
