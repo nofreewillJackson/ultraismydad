@@ -39,11 +39,11 @@
 
 ## C. Series inference
 
-- [ ] System keeps an explicit series assignment when one is set
-- [ ] System infers a series from text (aninews / dev-log / videos / spoolcast-features)
-- [ ] System attaches an *inferred* series only when the item belongs to the spoolcast line
-- [ ] System discards an inferred series for non-spoolcast items
-- [ ] System always honors an explicitly set series regardless of line
+- [x] System keeps an explicit series assignment when one is set
+- [x] System infers a series from text (aninews / dev-log / videos / spoolcast-features)
+- [x] System attaches an *inferred* series only when the item belongs to the spoolcast line
+- [x] System discards an inferred series for non-spoolcast items
+- [x] System always honors an explicitly set series regardless of line
 
 ## D. Video detection & matching
 

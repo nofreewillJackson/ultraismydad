@@ -135,9 +135,9 @@ the gate. Fixing the tsconfig (likely `moduleResolution: "bundler"`) is a separa
 
 ---
 
-## 7. Current state  (last updated: 2026-06-14, after Cycle 26)
+## 7. Current state  (last updated: 2026-06-14, after Cycle 31)
 
-**Tests: 26 passing (10 files). Suite is green. Working tree clean. Section A complete.**
+**Tests: 31 passing (10 files). Suite is green. Working tree clean. Sections A and C complete.**
 
 The **first vertical slice is complete (5/5)** (ROADMAP Phase 2): a persisted JSON snapshot →
 `list()` → export (privacy gate) → render → real Astro page. Proven by a real `astro build`: the
@@ -191,15 +191,28 @@ Cycles completed:
   canonical id — **derived from the `aliases` each record declares, not legacy's hardcoded
   `seriesAliases` map** (that map duplicated the records = the accident; deleted it). Also dropped
   legacy's circular self-canonicalization of a record's own id.
+- 27–31 — **Section C series inference** (all in `src/domain/series.ts`); **finishes Section C**.
+  27: `inferSeries({title, stack})` — an ordered keyword table → series id | undefined (a *derived*
+  read-time guess, never stored). 28: `resolveWorkItemSeriesId(item, series)` — explicit `seriesId`
+  wins, alias-resolved (added `seriesId?` to `WorkItem` as the stored relationship). 29: fall back to
+  inference when none explicit (left *unfenced* on purpose). 30: fence inference to the spoolcast line
+  (`SPOOLCAST_PRODUCT_LINE_ID`) — drove out the over-permissive 29 via a real RED; off-line items get
+  a series only if explicit. 31: guard test locking "explicit wins on any line" (passed without new
+  code — the explicit branch sits above the fence; no faked RED). Note: I had over-billed Section C as
+  "hard" — the genuinely fiddly token-overlap/fuzzy-match logic is **Section D** (video matching), not
+  this. Series inference is a keyword table + one fence.
 
 Source layout:
 - `src/domain/` — pure rules (`work-item.ts`, `log-entry.ts`, `series.ts`, `privacy-gate.ts`,
   `slug.ts`).
   `log-entry.ts` exports `createLogEntry` (per-entry factory: id guard, title default, slug) and
   `dedupeLogSlugs` (collection-level collision resolution). `series.ts` exports `createSeries`
-  (id guard, name-from-id default, aliases→[]), `seriesNameFromId`, and `resolveSeriesId`
-  (alias→canonical, sourced from records). No log-entry/series store/page/route yet — the domain is
-  being broadened ahead of wiring, the same way the slug rules were.
+  (id guard, name-from-id default, aliases→[]), `seriesNameFromId`, `resolveSeriesId`
+  (alias→canonical, sourced from records), `inferSeries` (keyword table), and
+  `resolveWorkItemSeriesId` (read-time effective series: explicit → fenced inference → none).
+  `work-item.ts` now carries `seriesId?` (the stored explicit assignment). No log-entry/series
+  store/page/route yet — the domain is being broadened ahead of wiring, the same way the slug rules
+  were.
 - `src/store/` — `work-item-store.ts` (port), `in-memory-work-item-store.ts` (adapter, used in
   tests), `filesystem-work-item-store.ts` (adapter, the build's real data source).
 - `src/app/` — `export-read-model.ts`, `work-item-pages.ts`.
@@ -223,15 +236,22 @@ Source layout:
 
 ## 8. Next step
 
-**Section A (Slugs, identity & naming) is COMPLETE** — work items (10–17), log entries (18–23),
-series (24–26). Next per ROADMAP: **Section C — series inference**. The behaviors: keep an explicit
-series assignment when one is set (run it through `resolveSeriesId` first); infer a series from text
-(`aninews`/`dev-log`/`videos`/`spoolcast-features` keyword scan) — but **attach an inferred series
-only when the item resolves to the `spoolcast` line**, and discard it otherwise; always honor an
-explicit `seriesId` regardless of line. This is where the "store relationships, derive presentation"
-rule meets its hardest case: inference is allowed but tightly fenced, and explicit always wins. Drive
-rejection-first as usual. (Alternative: start the privacy-gate breadth — hide a private log
-entry/series — or a read-path that exercises `dedupeLogSlugs`/`resolveSeriesId` for real.)
+**Sections A (identity & naming) and C (series inference) are COMPLETE.** The domain now has three
+entities (work item, log entry, series) plus the series resolver. Good next moves, roughly in order of
+value:
+
+1. **Privacy-gate breadth** (closest to the prime directive). The default-deny rule currently lives
+   only for work items. Extend it to the new entities: hide a private log entry / series / line at the
+   export seam — *the one seam*, never a second visibility check. (Inventory §L lines 175-176.) This
+   keeps the privacy invariant ahead of the data it must protect.
+2. **A read path that uses what we built.** Nothing yet calls `resolveWorkItemSeriesId`,
+   `dedupeLogSlugs`, or `inferSeries` against real data. Wiring one (e.g. a log read path, or
+   surfacing a work item's series on its page) turns broadened domain into a working slice and would
+   catch any glass invariants.
+3. Then **Section D (video detection / matching)** — this is the genuinely fiddly area (title-token
+   overlap thresholds, fuzzy duplicate matching). Budget for it accordingly.
+
+Drive rejection-first as usual.
 
 (Parked, pick up when natural: wire `dedupeLogSlugs`/`resolveSeriesId` into real read paths once
 log/series stores exist (mirror the FS store's `rows.map(createWorkItem)` normalization); HTML-escaping
