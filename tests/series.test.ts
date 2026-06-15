@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { createSeries, inferSeries, resolveSeriesId } from "../src/domain/series";
+import { createWorkItem } from "../src/domain/work-item";
+import {
+  createSeries,
+  inferSeries,
+  resolveSeriesId,
+  resolveWorkItemSeriesId,
+} from "../src/domain/series";
 
 describe("series", () => {
   it("rejects a series with no id", () => {
@@ -32,5 +38,20 @@ describe("inferSeries", () => {
     expect(inferSeries({ title: "session to video pipeline" })).toBe("videos");
     expect(inferSeries({ title: "Spoolcast feature drop" })).toBe("spoolcast-features");
     expect(inferSeries({ title: "An unrelated side project" })).toBeUndefined();
+  });
+});
+
+describe("resolveWorkItemSeriesId", () => {
+  const all = [createSeries({ id: "aninews", aliases: ["news-anime-bot"] })];
+
+  it("keeps an explicit series assignment, resolved through aliases", () => {
+    const item = createWorkItem({
+      id: "wi-1",
+      title: "Anything",
+      productLineId: "spoolcast",
+      seriesId: "news-anime-bot",
+    });
+
+    expect(resolveWorkItemSeriesId(item, all)).toBe("aninews");
   });
 });

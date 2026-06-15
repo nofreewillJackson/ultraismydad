@@ -11,6 +11,7 @@ export type CreateWorkItemInput = {
   title: string;
   slug?: string;
   productLineId?: string;
+  seriesId?: string;
   visibility?: WorkItemVisibility;
 };
 
@@ -19,6 +20,7 @@ export type WorkItem = {
   title: string;
   slug: string;
   productLineId: string;
+  seriesId?: string;
   visibility: WorkItemVisibility;
 };
 

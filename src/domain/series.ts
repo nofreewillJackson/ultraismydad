@@ -1,3 +1,5 @@
+import type { WorkItem } from "./work-item";
+
 export type CreateSeriesInput = {
   id: string;
   name?: string;
@@ -64,6 +66,15 @@ export function inferSeries(input: InferSeriesInput): string | undefined {
   }
   if (hay.includes("spoolcast")) {
     return "spoolcast-features";
+  }
+  return undefined;
+}
+
+// Derives a work item's effective series id at read time (never stored). An
+// explicit assignment wins and is resolved through aliases.
+export function resolveWorkItemSeriesId(item: WorkItem, series: Series[]): string | undefined {
+  if (item.seriesId) {
+    return resolveSeriesId(item.seriesId, series);
   }
   return undefined;
 }
