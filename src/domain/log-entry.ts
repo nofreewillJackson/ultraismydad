@@ -1,4 +1,5 @@
 import { slugify } from "./slug";
+import { DEFAULT_VISIBILITY, type Visibility } from "./visibility";
 
 export const DEFAULT_LOG_ENTRY_TITLE = "untitled entry";
 
@@ -7,6 +8,7 @@ export type CreateLogEntryInput = {
   title: string;
   slug?: string;
   day?: number;
+  visibility?: Visibility;
 };
 
 export type LogEntry = {
@@ -14,6 +16,7 @@ export type LogEntry = {
   title: string;
   slug: string;
   day?: number;
+  visibility: Visibility;
 };
 
 export function createLogEntry(input: CreateLogEntryInput): LogEntry {
@@ -25,6 +28,7 @@ export function createLogEntry(input: CreateLogEntryInput): LogEntry {
     ...input,
     title,
     slug: input.slug || slugify(`day-${input.day || ""}-${title}`),
+    visibility: input.visibility ?? DEFAULT_VISIBILITY,
   };
 }
 

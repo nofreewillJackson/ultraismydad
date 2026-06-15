@@ -1,6 +1,5 @@
 import { slugify } from "./slug";
-
-export type WorkItemVisibility = "public" | "private" | "gated";
+import { DEFAULT_VISIBILITY, type Visibility } from "./visibility";
 
 export const CATCH_ALL_PRODUCT_LINE_ID = "catch-all";
 
@@ -12,7 +11,7 @@ export type CreateWorkItemInput = {
   slug?: string;
   productLineId?: string;
   seriesId?: string;
-  visibility?: WorkItemVisibility;
+  visibility?: Visibility;
 };
 
 export type WorkItem = {
@@ -21,7 +20,7 @@ export type WorkItem = {
   slug: string;
   productLineId: string;
   seriesId?: string;
-  visibility: WorkItemVisibility;
+  visibility: Visibility;
 };
 
 export function createWorkItem(input: CreateWorkItemInput): WorkItem {
@@ -34,6 +33,6 @@ export function createWorkItem(input: CreateWorkItemInput): WorkItem {
     title,
     slug: input.slug || slugify(title),
     productLineId: input.productLineId ?? CATCH_ALL_PRODUCT_LINE_ID,
-    visibility: input.visibility ?? "private",
+    visibility: input.visibility ?? DEFAULT_VISIBILITY,
   };
 }

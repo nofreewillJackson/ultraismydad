@@ -7,6 +7,12 @@ describe("log entry", () => {
     expect(() => createLogEntry({ id: "", title: "Anything" })).toThrow(/id/i);
   });
 
+  it("defaults visibility to private when omitted", () => {
+    const logEntry = createLogEntry({ id: "log-005", title: "Draft note" });
+
+    expect(logEntry.visibility).toBe("private");
+  });
+
   it("titles an untitled log entry 'untitled entry'", () => {
     const logEntry = createLogEntry({
       id: "log-001",
