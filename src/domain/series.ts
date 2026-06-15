@@ -70,11 +70,19 @@ export function inferSeries(input: InferSeriesInput): string | undefined {
   return undefined;
 }
 
+// Inference is fenced to this one line. Outside it, only an explicit
+// assignment gives a work item a series. (Legacy data.ts:1024.)
+export const SPOOLCAST_PRODUCT_LINE_ID = "spoolcast";
+
 // Derives a work item's effective series id at read time (never stored). An
-// explicit assignment wins and is resolved through aliases.
+// explicit assignment wins (any line) and is resolved through aliases; otherwise
+// a series is inferred from text, but only under the spoolcast line.
 export function resolveWorkItemSeriesId(item: WorkItem, series: Series[]): string | undefined {
   if (item.seriesId) {
     return resolveSeriesId(item.seriesId, series);
+  }
+  if (item.productLineId !== SPOOLCAST_PRODUCT_LINE_ID) {
+    return undefined;
   }
   const inferred = inferSeries({ title: item.title });
   return inferred ? resolveSeriesId(inferred, series) : undefined;

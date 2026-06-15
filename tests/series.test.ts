@@ -64,4 +64,14 @@ describe("resolveWorkItemSeriesId", () => {
 
     expect(resolveWorkItemSeriesId(item, all)).toBe("aninews");
   });
+
+  it("discards an inferred series off the spoolcast line", () => {
+    const item = createWorkItem({
+      id: "wi-3",
+      title: "Aninews weekly drop",
+      productLineId: "research",
+    });
+
+    expect(resolveWorkItemSeriesId(item, all)).toBeUndefined();
+  });
 });
