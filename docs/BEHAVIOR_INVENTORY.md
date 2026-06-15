@@ -161,7 +161,7 @@
 - [ ] Operator can create a new work item
 - [ ] Operator can edit an existing work item
 - [ ] Operator can toggle a work item between public and private
-- [ ] New work items default to private until explicitly made public
+- [x] New work items default to private until explicitly made public
 - [ ] Operator can pick canonical technologies for a work item via a searchable picker
 - [ ] Operator can create or edit a technology (name, category, aliases, order, visibility)
 - [ ] Operator can hide a technology (set it private)
@@ -170,10 +170,10 @@
 
 ## N. Trust boundaries & error paths
 
-- [ ] System publishes a work item only when its visibility is exactly "public"
-- [ ] System never publishes a work item that is private, gated, or unset
-- [ ] System hides a log entry marked private
-- [ ] System hides a product line, series, or technology marked private
+- [x] System publishes a work item only when its visibility is exactly "public"
+- [x] System never publishes a work item that is private, gated, or unset
+- [ ] System hides a log entry marked private <!-- gate + default ready (selectPublic, Cycle 34); needs a log read path to be end-to-end -->
+- [ ] System hides a product line, series, or technology marked private <!-- series gated by selectPublic; needs a series read path -->
 - [ ] System excludes a garden note marked draft from the published site
 - [ ] System omits a private file from a work item's detail entirely
 - [ ] System shows a gated file as "locked" and never emits its content

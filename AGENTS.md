@@ -135,9 +135,10 @@ the gate. Fixing the tsconfig (likely `moduleResolution: "bundler"`) is a separa
 
 ---
 
-## 7. Current state  (last updated: 2026-06-14, after Cycle 31)
+## 7. Current state  (last updated: 2026-06-14, after Cycle 34)
 
-**Tests: 31 passing (10 files). Suite is green. Working tree clean. Sections A and C complete.**
+**Tests: 34 passing (10 files). Suite is green. Working tree clean. Sections A and C complete;
+prime-directive privacy breadth done.**
 
 The **first vertical slice is complete (5/5)** (ROADMAP Phase 2): a persisted JSON snapshot →
 `list()` → export (privacy gate) → render → real Astro page. Proven by a real `astro build`: the
@@ -201,10 +202,21 @@ Cycles completed:
   code — the explicit branch sits above the fence; no faked RED). Note: I had over-billed Section C as
   "hard" — the genuinely fiddly token-overlap/fuzzy-match logic is **Section D** (video matching), not
   this. Series inference is a keyword table + one fence.
+- 32–34 — **prime-directive privacy breadth.** 32: a log entry is private by default; introduced one
+  shared `src/domain/visibility.ts` (`Visibility` type + `DEFAULT_VISIBILITY = "private"`) and
+  refactored `work-item.ts` onto it (deleted the duplicate `WorkItemVisibility`). 33: a series is
+  private by default — **deliberately overrides legacy's default-public for series** (DOMAIN_PRIMER
+  §4.3); one uniform default-deny rule can't leak by omission. 34: generalized the gate to
+  `selectPublic<T extends { visibility }>` and **deleted `selectPublicWorkItems`** — there is now
+  exactly one place in the codebase that decides visibility (`=== "public"`), per the prime directive.
+  Build still emits only the public work item.
 
 Source layout:
-- `src/domain/` — pure rules (`work-item.ts`, `log-entry.ts`, `series.ts`, `privacy-gate.ts`,
-  `slug.ts`).
+- `src/domain/` — pure rules (`work-item.ts`, `log-entry.ts`, `series.ts`, `visibility.ts`,
+  `privacy-gate.ts`, `slug.ts`).
+  `visibility.ts` holds the one `Visibility` type + `DEFAULT_VISIBILITY = "private"`; `privacy-gate.ts`
+  is the single gate, `selectPublic<T extends { visibility }>` — the *only* place that decides
+  visibility. All three entities default to private and pass through this one gate.
   `log-entry.ts` exports `createLogEntry` (per-entry factory: id guard, title default, slug) and
   `dedupeLogSlugs` (collection-level collision resolution). `series.ts` exports `createSeries`
   (id guard, name-from-id default, aliases→[]), `seriesNameFromId`, `resolveSeriesId`
@@ -236,20 +248,20 @@ Source layout:
 
 ## 8. Next step
 
-**Sections A (identity & naming) and C (series inference) are COMPLETE.** The domain now has three
-entities (work item, log entry, series) plus the series resolver. Good next moves, roughly in order of
-value:
+**Sections A (identity & naming) and C (series inference) are COMPLETE, and prime-directive privacy
+breadth is done** (Cycles 32-34: all three entities private-by-default; one generic `selectPublic`
+gate). The domain now has three entities + the series resolver + a uniform visibility seam. Good next
+moves, roughly in order of value:
 
-1. **Privacy-gate breadth** (closest to the prime directive). The default-deny rule currently lives
-   only for work items. Extend it to the new entities: hide a private log entry / series / line at the
-   export seam — *the one seam*, never a second visibility check. (Inventory §L lines 175-176.) This
-   keeps the privacy invariant ahead of the data it must protect.
-2. **A read path that uses what we built.** Nothing yet calls `resolveWorkItemSeriesId`,
-   `dedupeLogSlugs`, or `inferSeries` against real data. Wiring one (e.g. a log read path, or
-   surfacing a work item's series on its page) turns broadened domain into a working slice and would
-   catch any glass invariants.
-3. Then **Section D (video detection / matching)** — this is the genuinely fiddly area (title-token
-   overlap thresholds, fuzzy duplicate matching). Budget for it accordingly.
+1. **A read path that uses what we built** (now the highest-value move). Nothing yet exports log
+   entries or series, so `selectPublic` on them, `dedupeLogSlugs`, and `resolveWorkItemSeriesId` are
+   proven only in unit tests, not end-to-end. Wire one real slice — e.g. a log read path
+   (`LogEntryStore` → `exportReadModel` extended to `{ workItems, logEntries }` via the *same*
+   `selectPublic` → a `/log` page), mirroring the work-item slice. That turns the broadened domain
+   into a working slice, lets the build *physically* prove a private log entry produces no page, and
+   would flush out any glass invariants. Inventory §L 175-176 become checkable once this lands.
+2. **Section D (video detection / matching)** — the genuinely fiddly area (title-token overlap
+   thresholds, fuzzy duplicate matching). Budget for it accordingly.
 
 Drive rejection-first as usual.
 
