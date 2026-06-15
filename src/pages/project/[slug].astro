@@ -1,6 +1,7 @@
 ---
 import { getWorkItemPaths } from "../../app/work-item-pages";
 import { FilesystemWorkItemStore } from "../../store/filesystem-work-item-store";
+import { InMemoryLogEntryStore } from "../../store/in-memory-log-entry-store";
 
 // Thin glue: the framework boundary calls our tested use case. No business
 // logic lives here — which items become pages is decided by the export
@@ -11,8 +12,16 @@ import { FilesystemWorkItemStore } from "../../store/filesystem-work-item-store"
 // The data source is the single filesystem snapshot for this environment
 // (one source, no fallback cascade). It contains every item — public AND
 // private — and the export's privacy gate is what omits the private ones.
+//
+// The export seam assembles the whole public read model, so it needs a log-entry
+// store too. This page doesn't render log entries; an empty in-memory store is a
+// temporary scaffold until the filesystem log store + data/log-entries.json land
+// (Cycle 39), exactly as the work-item slice scaffolded before its FS store.
 export async function getStaticPaths() {
-  return getWorkItemPaths(new FilesystemWorkItemStore("data/work-items.json"));
+  return getWorkItemPaths({
+    workItems: new FilesystemWorkItemStore("data/work-items.json"),
+    logEntries: new InMemoryLogEntryStore(),
+  });
 }
 
 const { html } = Astro.props;
