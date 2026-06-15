@@ -15,4 +15,14 @@ describe("log entry", () => {
 
     expect(logEntry.title).toBe("untitled entry");
   });
+
+  it("derives a slug from day and title when no slug is provided", () => {
+    const logEntry = createLogEntry({
+      id: "log-002",
+      title: "First Build",
+      day: 5,
+    });
+
+    expect(logEntry.slug).toBe("day-5-first-build");
+  });
 });

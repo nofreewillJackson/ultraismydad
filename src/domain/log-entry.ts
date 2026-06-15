@@ -1,13 +1,18 @@
+import { slugify } from "./slug";
+
 export const DEFAULT_LOG_ENTRY_TITLE = "untitled entry";
 
 export type CreateLogEntryInput = {
   id: string;
   title: string;
+  day?: number;
 };
 
 export type LogEntry = {
   id: string;
   title: string;
+  slug: string;
+  day?: number;
 };
 
 export function createLogEntry(input: CreateLogEntryInput): LogEntry {
@@ -18,5 +23,6 @@ export function createLogEntry(input: CreateLogEntryInput): LogEntry {
   return {
     ...input,
     title,
+    slug: slugify(`day-${input.day}-${title}`),
   };
 }
