@@ -25,4 +25,13 @@ describe("log entry", () => {
 
     expect(logEntry.slug).toBe("day-5-first-build");
   });
+
+  it("slugs a day-less log entry without a literal 'undefined'", () => {
+    const logEntry = createLogEntry({
+      id: "log-003",
+      title: "First Build",
+    });
+
+    expect(logEntry.slug).toBe("day-first-build");
+  });
 });

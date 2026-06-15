@@ -23,6 +23,6 @@ export function createLogEntry(input: CreateLogEntryInput): LogEntry {
   return {
     ...input,
     title,
-    slug: slugify(`day-${input.day}-${title}`),
+    slug: slugify(`day-${input.day || ""}-${title}`),
   };
 }
