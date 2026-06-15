@@ -135,10 +135,11 @@ the gate. Fixing the tsconfig (likely `moduleResolution: "bundler"`) is a separa
 
 ---
 
-## 7. Current state  (last updated: 2026-06-14, after Cycle 34)
+## 7. Current state  (last updated: 2026-06-15, after Cycle 39)
 
-**Tests: 34 passing (10 files). Suite is green. Working tree clean. Sections A and C complete;
-prime-directive privacy breadth done.**
+**Tests: 42 passing (14 files). Suite is green. Working tree clean. Sections A and C complete;
+prime-directive privacy breadth done. Log-entry read-path slice is built but NOT yet wired to the
+framework (terminus pending — see §8).**
 
 The **first vertical slice is complete (5/5)** (ROADMAP Phase 2): a persisted JSON snapshot →
 `list()` → export (privacy gate) → render → real Astro page. Proven by a real `astro build`: the
@@ -210,6 +211,18 @@ Cycles completed:
   `selectPublic<T extends { visibility }>` and **deleted `selectPublicWorkItems`** — there is now
   exactly one place in the codebase that decides visibility (`=== "public"`), per the prime directive.
   Build still emits only the public work item.
+- 35–39 — **log-entry read-path vertical slice (built, not yet wired to Astro).** Mirrors the
+  work-item slice (5-9) deliberately. 35: `LogEntryStore` port + `InMemoryLogEntryStore`. 36: extended
+  `exportReadModel` to take a `{ workItems, logEntries }` **stores object** and return both collections
+  gated through the *same* `selectPublic` (the seam now assembles the whole public read model; page
+  builders go through it, so `getWorkItemPaths` widened to take the stores object). 37:
+  `renderLogEntryDetail` (pure, no escaping yet — same deferred debt as the work-item renderer). 38:
+  `getLogEntryPaths` (only public entries become pages, keyed by derived slug). 39:
+  `FilesystemLogEntryStore` (full adapter contract in one cycle — a port of the vetted work-item FS
+  adapter, not a re-discovery). **Terminus (Cycle 40) still pending**: no `/log/[slug].astro`, no
+  `data/log-entries.json`, and the `/project` page still passes a **temporary empty
+  `InMemoryLogEntryStore` scaffold** to the seam. So log-entry privacy is unit-proven but **not yet
+  physically proven by the build**.
 
 Source layout:
 - `src/domain/` — pure rules (`work-item.ts`, `log-entry.ts`, `series.ts`, `visibility.ts`,
@@ -222,20 +235,30 @@ Source layout:
   (id guard, name-from-id default, aliases→[]), `seriesNameFromId`, `resolveSeriesId`
   (alias→canonical, sourced from records), `inferSeries` (keyword table), and
   `resolveWorkItemSeriesId` (read-time effective series: explicit → fenced inference → none).
-  `work-item.ts` now carries `seriesId?` (the stored explicit assignment). No log-entry/series
-  store/page/route yet — the domain is being broadened ahead of wiring, the same way the slug rules
-  were.
-- `src/store/` — `work-item-store.ts` (port), `in-memory-work-item-store.ts` (adapter, used in
-  tests), `filesystem-work-item-store.ts` (adapter, the build's real data source).
-- `src/app/` — `export-read-model.ts`, `work-item-pages.ts`.
-- `src/render/` — `work-item-detail.ts`.
+  `work-item.ts` now carries `seriesId?` (the stored explicit assignment). (No series store/page yet;
+  the series domain is broadened ahead of wiring.)
+- `src/store/` — `work-item-store.ts` / `log-entry-store.ts` (ports); `in-memory-*` adapters (used in
+  tests); `filesystem-work-item-store.ts` (the build's real data source) and
+  `filesystem-log-entry-store.ts` (its twin — built Cycle 39, **not yet wired to a route/data file**).
+- `src/app/` — `export-read-model.ts` (the seam: `exportReadModel(stores: { workItems, logEntries })`
+  → gated `{ workItems, logEntries }`), `work-item-pages.ts`, `log-entry-pages.ts` (both take the
+  stores object and view their slice).
+- `src/render/` — `work-item-detail.ts`, `log-entry-detail.ts` (both pure; neither escapes HTML yet).
 - `src/pages/project/[slug].astro` — thin framework glue, routes by slug (constructs the FS store
   *inside* `getStaticPaths`; Astro isolates that scope, so a module-level const is invisible to it).
+  Temporarily also constructs an empty `InMemoryLogEntryStore` to satisfy the seam's stores object
+  (scaffold; Cycle 40 swaps it for the FS log store). No `src/pages/log/` route yet.
 - `data/work-items.json` — the single snapshot source for this environment (contains all items,
   including private; ids are opaque, the URL is the derived slug; the export gate omits private ones).
 
 **Known shortcuts to unwind (do not mistake for finished work):**
-- `renderWorkItemDetail` does **no HTML-escaping** yet (deferred XSS trust-boundary cycle).
+- **Log read-path terminus is unfinished (Cycle 40).** `FilesystemLogEntryStore` exists and is
+  unit-proven, but there is no `/log/[slug].astro`, no `data/log-entries.json`, and the `/project`
+  page passes an **empty `InMemoryLogEntryStore` scaffold** to the seam. Until the terminus lands,
+  log-entry privacy is unit-proven only — **not** physically proven by the build. First job next
+  session.
+- `renderWorkItemDetail` **and** `renderLogEntryDetail` do **no HTML-escaping** yet (deferred XSS
+  trust-boundary cycle — should land as a shared escape in both renderers).
 - **Read boundary** now: missing file → `[]`; non-array JSON → clear error (16); rows normalized
   through the domain (14), which rejects an id-less row (15). Remaining nicety (not a hole):
   malformed JSON still propagates as a stock `SyntaxError` — wrap it with the path only if a real
@@ -248,27 +271,26 @@ Source layout:
 
 ## 8. Next step
 
-**Sections A (identity & naming) and C (series inference) are COMPLETE, and prime-directive privacy
-breadth is done** (Cycles 32-34: all three entities private-by-default; one generic `selectPublic`
-gate). The domain now has three entities + the series resolver + a uniform visibility seam. Good next
-moves, roughly in order of value:
+**Immediate first job: finish the log read-path slice (Cycle 40, the terminus).** Cycles 35-39 built
+the slice through the store/app/render layers (all unit-green), but it is **not wired to the
+framework**. To complete it and get the physical privacy proof:
 
-1. **A read path that uses what we built** (now the highest-value move). Nothing yet exports log
-   entries or series, so `selectPublic` on them, `dedupeLogSlugs`, and `resolveWorkItemSeriesId` are
-   proven only in unit tests, not end-to-end. Wire one real slice — e.g. a log read path
-   (`LogEntryStore` → `exportReadModel` extended to `{ workItems, logEntries }` via the *same*
-   `selectPublic` → a `/log` page), mirroring the work-item slice. That turns the broadened domain
-   into a working slice, lets the build *physically* prove a private log entry produces no page, and
-   would flush out any glass invariants. Inventory §L 175-176 become checkable once this lands.
-2. **Section D (video detection / matching)** — the genuinely fiddly area (title-token overlap
-   thresholds, fuzzy duplicate matching). Budget for it accordingly.
+1. Add `src/pages/log/[slug].astro` (mirror `project/[slug].astro`): call
+   `getLogEntryPaths({ workItems: new FilesystemWorkItemStore("data/work-items.json"), logEntries:
+   new FilesystemLogEntryStore("data/log-entries.json") })` in `getStaticPaths`.
+2. Add `data/log-entries.json` with one public + one private entry (no slug — derived on read).
+3. **Swap the `/project` page's `InMemoryLogEntryStore` scaffold** for
+   `new FilesystemLogEntryStore("data/log-entries.json")` (remove the scaffold).
+4. Prove by `npm run build`: the public log entry → `dist/log/<slug>/index.html`; the private one →
+   no file. Then check inventory §L line 175 ("hides a log entry marked private").
+
+After that, the highest-value moves are: a series read path (makes §L 176 checkable), or
+**Section D (video detection / matching)** — the genuinely fiddly area (title-token overlap
+thresholds, fuzzy duplicate matching); budget accordingly.
 
 Drive rejection-first as usual.
 
-(Parked, pick up when natural: wire `dedupeLogSlugs`/`resolveSeriesId` into real read paths once
-log/series stores exist (mirror the FS store's `rows.map(createWorkItem)` normalization); HTML-escaping
-in `renderWorkItemDetail`; wrap malformed-JSON parse errors with the snapshot path; build-integrity
-gate for "unexpectedly zero pages". Then Phases 3→7.)
-
-Other parked behaviors to pick up when natural: HTML-escaping in `renderWorkItemDetail` (XSS), and a
-build-integrity gate (warn/fail on unexpectedly-zero pages). Then ROADMAP Phases 3→7.
+(Parked, pick up when natural: `dedupeLogSlugs` is still not called by any read path — fold it into
+the log read path when sorting/listing arrives; `resolveSeriesId`/`resolveWorkItemSeriesId` likewise
+await a consumer; shared HTML-escaping in both renderers; wrap malformed-JSON parse errors with the
+snapshot path; build-integrity gate for "unexpectedly zero pages". Then Phases 3→7.)
