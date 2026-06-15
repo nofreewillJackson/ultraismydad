@@ -41,3 +41,29 @@ export function resolveSeriesId(value: string, series: Series[]): string {
   }
   return value;
 }
+
+export type InferSeriesInput = {
+  title?: string;
+  stack?: string[];
+};
+
+// Best-effort series guess from free text (title + stack). A read-time
+// convenience, never a stored relationship — and only honored under the
+// spoolcast line (see resolveWorkItemSeriesId). Order matters: the specific
+// matches win before the broad "spoolcast" catch-all.
+export function inferSeries(input: InferSeriesInput): string | undefined {
+  const hay = [input.title, ...(input.stack ?? [])].join(" ").toLowerCase();
+  if (hay.includes("aninews") || hay.includes("news-anime") || hay.includes("faux7")) {
+    return "aninews";
+  }
+  if (hay.includes("dev-log") || hay.includes("dev log")) {
+    return "spoolcast-dev-log";
+  }
+  if (hay.includes("chat to video workflow") || hay.includes("session to video")) {
+    return "videos";
+  }
+  if (hay.includes("spoolcast")) {
+    return "spoolcast-features";
+  }
+  return undefined;
+}

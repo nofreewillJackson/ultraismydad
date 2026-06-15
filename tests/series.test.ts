@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createSeries, resolveSeriesId } from "../src/domain/series";
+import { createSeries, inferSeries, resolveSeriesId } from "../src/domain/series";
 
 describe("series", () => {
   it("rejects a series with no id", () => {
@@ -22,5 +22,15 @@ describe("resolveSeriesId", () => {
     ];
 
     expect(resolveSeriesId("news-anime-bot", all)).toBe("aninews");
+  });
+});
+
+describe("inferSeries", () => {
+  it("infers a series from keywords in the text, else undefined", () => {
+    expect(inferSeries({ title: "Aninews Episode 12" })).toBe("aninews");
+    expect(inferSeries({ title: "Weekly Dev Log" })).toBe("spoolcast-dev-log");
+    expect(inferSeries({ title: "session to video pipeline" })).toBe("videos");
+    expect(inferSeries({ title: "Spoolcast feature drop" })).toBe("spoolcast-features");
+    expect(inferSeries({ title: "An unrelated side project" })).toBeUndefined();
   });
 });
