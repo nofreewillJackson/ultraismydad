@@ -19,8 +19,8 @@
 - [x] System gives an untitled work item the title "untitled project"
 - [x] System gives an untitled log entry the title "untitled entry"
 - [x] System de-duplicates colliding log slugs by appending a short id suffix to later ones
-- [ ] System title-cases a series name from its id when no name is given
-- [ ] System resolves a series alias to its canonical id (e.g. `news-anime-bot` → `aninews`)
+- [x] System title-cases a series name from its id when no name is given
+- [x] System resolves a series alias to its canonical id (e.g. `news-anime-bot` → `aninews`)
 
 ## B. Product-line (main project) inference
 

@@ -135,9 +135,9 @@ the gate. Fixing the tsconfig (likely `moduleResolution: "bundler"`) is a separa
 
 ---
 
-## 7. Current state  (last updated: 2026-06-14, after Cycle 23)
+## 7. Current state  (last updated: 2026-06-14, after Cycle 26)
 
-**Tests: 23 passing (9 files). Suite is green. Working tree clean.**
+**Tests: 26 passing (10 files). Suite is green. Working tree clean. Section A complete.**
 
 The **first vertical slice is complete (5/5)** (ROADMAP Phase 2): a persisted JSON snapshot →
 `list()` → export (privacy gate) → render → real Astro page. Proven by a real `astro build`: the
@@ -184,12 +184,22 @@ Cycles completed:
   a pure, order-dependent pass over the *collection* (first claimant keeps the base slug; later
   collisions get `-{first 6 of id, lowercased}`); keys on each entry's already-derived slug, dropping
   legacy's dead re-derivation branch.
+- 24–26 — **Section A series** (third domain entity, `src/domain/series.ts`); **finishes Section A**.
+  24: `createSeries` rejects an id-less series (rejection-first). 25: `seriesNameFromId` title-cases a
+  name from the id when none is given (separators→spaces, title-case; legacy's `series-` prefix strip
+  *not* ported — no real id uses it). 26: `resolveSeriesId(value, series)` folds an alias onto the
+  canonical id — **derived from the `aliases` each record declares, not legacy's hardcoded
+  `seriesAliases` map** (that map duplicated the records = the accident; deleted it). Also dropped
+  legacy's circular self-canonicalization of a record's own id.
 
 Source layout:
-- `src/domain/` — pure rules (`work-item.ts`, `log-entry.ts`, `privacy-gate.ts`, `slug.ts`).
+- `src/domain/` — pure rules (`work-item.ts`, `log-entry.ts`, `series.ts`, `privacy-gate.ts`,
+  `slug.ts`).
   `log-entry.ts` exports `createLogEntry` (per-entry factory: id guard, title default, slug) and
-  `dedupeLogSlugs` (collection-level collision resolution). No log-entry store/page/route yet — the
-  domain is being broadened ahead of wiring, the same way the slug rules were.
+  `dedupeLogSlugs` (collection-level collision resolution). `series.ts` exports `createSeries`
+  (id guard, name-from-id default, aliases→[]), `seriesNameFromId`, and `resolveSeriesId`
+  (alias→canonical, sourced from records). No log-entry/series store/page/route yet — the domain is
+  being broadened ahead of wiring, the same way the slug rules were.
 - `src/store/` — `work-item-store.ts` (port), `in-memory-work-item-store.ts` (adapter, used in
   tests), `filesystem-work-item-store.ts` (adapter, the build's real data source).
 - `src/app/` — `export-read-model.ts`, `work-item-pages.ts`.
@@ -213,16 +223,20 @@ Source layout:
 
 ## 8. Next step
 
-Work-item slugs (10–17) and **the log-entry rules (18–23) are done**. **Finish Section A — series**:
-title-case a series name from its id when none is given; resolve a series alias to its canonical id
-(e.g. `news-anime-bot` → `aninews`). These are the last two boxes in Section A of
-`BEHAVIOR_INVENTORY.md`. Drive as normal RED→GREEN→REFACTOR cycles, rejection-first. After Section A,
-move to Section C (series inference) or the privacy-gate work, per ROADMAP phases.
+**Section A (Slugs, identity & naming) is COMPLETE** — work items (10–17), log entries (18–23),
+series (24–26). Next per ROADMAP: **Section C — series inference**. The behaviors: keep an explicit
+series assignment when one is set (run it through `resolveSeriesId` first); infer a series from text
+(`aninews`/`dev-log`/`videos`/`spoolcast-features` keyword scan) — but **attach an inferred series
+only when the item resolves to the `spoolcast` line**, and discard it otherwise; always honor an
+explicit `seriesId` regardless of line. This is where the "store relationships, derive presentation"
+rule meets its hardest case: inference is allowed but tightly fenced, and explicit always wins. Drive
+rejection-first as usual. (Alternative: start the privacy-gate breadth — hide a private log
+entry/series — or a read-path that exercises `dedupeLogSlugs`/`resolveSeriesId` for real.)
 
-(Parked, pick up when natural: wire `dedupeLogSlugs` into a real log read path once one exists
-(mirror the FS store's `rows.map(createWorkItem)` normalization); HTML-escaping in
-`renderWorkItemDetail`; wrap malformed-JSON parse errors with the snapshot path; build-integrity gate
-for "unexpectedly zero pages". Then Phases 3→7.)
+(Parked, pick up when natural: wire `dedupeLogSlugs`/`resolveSeriesId` into real read paths once
+log/series stores exist (mirror the FS store's `rows.map(createWorkItem)` normalization); HTML-escaping
+in `renderWorkItemDetail`; wrap malformed-JSON parse errors with the snapshot path; build-integrity
+gate for "unexpectedly zero pages". Then Phases 3→7.)
 
 Other parked behaviors to pick up when natural: HTML-escaping in `renderWorkItemDetail` (XSS), and a
 build-integrity gate (warn/fail on unexpectedly-zero pages). Then ROADMAP Phases 3→7.
