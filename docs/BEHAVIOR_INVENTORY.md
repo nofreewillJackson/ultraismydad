@@ -13,12 +13,12 @@
 
 ## A. Slugs, identity & naming
 
-- [ ] System generates a work-item slug from its title when none is provided
-- [ ] System generates a log-entry slug from `day-{day}-{title}` when none is provided
-- [ ] System lowercases, hyphenates, trims, and truncates a slug to 80 characters
-- [ ] System gives an untitled work item the title "untitled project"
-- [ ] System gives an untitled log entry the title "untitled entry"
-- [ ] System de-duplicates colliding log slugs by appending a short id suffix to later ones
+- [x] System generates a work-item slug from its title when none is provided
+- [x] System generates a log-entry slug from `day-{day}-{title}` when none is provided
+- [x] System lowercases, hyphenates, trims, and truncates a slug to 80 characters
+- [x] System gives an untitled work item the title "untitled project"
+- [x] System gives an untitled log entry the title "untitled entry"
+- [x] System de-duplicates colliding log slugs by appending a short id suffix to later ones
 - [ ] System title-cases a series name from its id when no name is given
 - [ ] System resolves a series alias to its canonical id (e.g. `news-anime-bot` → `aninews`)
 

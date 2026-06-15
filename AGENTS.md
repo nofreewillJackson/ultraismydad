@@ -135,9 +135,9 @@ the gate. Fixing the tsconfig (likely `moduleResolution: "bundler"`) is a separa
 
 ---
 
-## 7. Current state  (last updated: 2026-06-13, after Cycle 17)
+## 7. Current state  (last updated: 2026-06-14, after Cycle 23)
 
-**Tests: 17 passing (8 files). Suite is green. Working tree clean.**
+**Tests: 23 passing (9 files). Suite is green. Working tree clean.**
 
 The **first vertical slice is complete (5/5)** (ROADMAP Phase 2): a persisted JSON snapshot →
 `list()` → export (privacy gate) → render → real Astro page. Proven by a real `astro build`: the
@@ -174,9 +174,22 @@ Cycles completed:
   on `workItem.slug`; route file renamed `[id].astro` → `[slug].astro`. Proven by build: public item
   (opaque id `wi-001`) is served at `/project/shipped-build/` — its slug, not its id; private item
   still produces no page.
+- 18–23 — **Section A log entries** (second domain entity, `src/domain/log-entry.ts`). 18:
+  `createLogEntry` rejects an id-less entry (rejection-first; a new front door guards its boundary
+  before happy-path, same reasoning as Cycle 15). 19: untitled entry → "untitled entry". 20:
+  slug = `slugify("day-{day}-{title}")`, reusing the one shared `slugify` (no second algorithm). 21:
+  a day-less entry coalesces day to `""` so the slug has no literal `"undefined"` (closed a glass
+  invariant left deliberately by 20, triangulated under its own test). 22: an explicit slug is
+  preserved (`createLogEntry` now mirrors `createWorkItem` for slug handling). 23: `dedupeLogSlugs` —
+  a pure, order-dependent pass over the *collection* (first claimant keeps the base slug; later
+  collisions get `-{first 6 of id, lowercased}`); keys on each entry's already-derived slug, dropping
+  legacy's dead re-derivation branch.
 
 Source layout:
-- `src/domain/` — pure rules (`work-item.ts`, `privacy-gate.ts`, `slug.ts`).
+- `src/domain/` — pure rules (`work-item.ts`, `log-entry.ts`, `privacy-gate.ts`, `slug.ts`).
+  `log-entry.ts` exports `createLogEntry` (per-entry factory: id guard, title default, slug) and
+  `dedupeLogSlugs` (collection-level collision resolution). No log-entry store/page/route yet — the
+  domain is being broadened ahead of wiring, the same way the slug rules were.
 - `src/store/` — `work-item-store.ts` (port), `in-memory-work-item-store.ts` (adapter, used in
   tests), `filesystem-work-item-store.ts` (adapter, the build's real data source).
 - `src/app/` — `export-read-model.ts`, `work-item-pages.ts`.
@@ -200,14 +213,16 @@ Source layout:
 
 ## 8. Next step
 
-Work-item slugs, the read boundary, and slug routing are all done (10–17). **Continue Section A —
-log entries**: log-entry slug from `day-{day}-{title}` when none provided, untitled log entry →
-"untitled entry", log-slug de-duplication (later collisions get a `-{first 6 chars of id}` suffix).
-Then series name title-casing + alias resolution. Drive as normal RED→GREEN→REFACTOR cycles,
-rejection-first.
+Work-item slugs (10–17) and **the log-entry rules (18–23) are done**. **Finish Section A — series**:
+title-case a series name from its id when none is given; resolve a series alias to its canonical id
+(e.g. `news-anime-bot` → `aninews`). These are the last two boxes in Section A of
+`BEHAVIOR_INVENTORY.md`. Drive as normal RED→GREEN→REFACTOR cycles, rejection-first. After Section A,
+move to Section C (series inference) or the privacy-gate work, per ROADMAP phases.
 
-(Parked, pick up when natural: HTML-escaping in `renderWorkItemDetail`; wrap malformed-JSON parse
-errors with the snapshot path; build-integrity gate for "unexpectedly zero pages". Then Phases 3→7.)
+(Parked, pick up when natural: wire `dedupeLogSlugs` into a real log read path once one exists
+(mirror the FS store's `rows.map(createWorkItem)` normalization); HTML-escaping in
+`renderWorkItemDetail`; wrap malformed-JSON parse errors with the snapshot path; build-integrity gate
+for "unexpectedly zero pages". Then Phases 3→7.)
 
 Other parked behaviors to pick up when natural: HTML-escaping in `renderWorkItemDetail` (XSS), and a
 build-integrity gate (warn/fail on unexpectedly-zero pages). Then ROADMAP Phases 3→7.
