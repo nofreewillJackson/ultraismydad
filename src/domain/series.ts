@@ -1,15 +1,18 @@
+import { DEFAULT_VISIBILITY, type Visibility } from "./visibility";
 import type { WorkItem } from "./work-item";
 
 export type CreateSeriesInput = {
   id: string;
   name?: string;
   aliases?: string[];
+  visibility?: Visibility;
 };
 
 export type Series = {
   id: string;
   name: string;
   aliases: string[];
+  visibility: Visibility;
 };
 
 // Derives a human display name from a series id: separators become spaces and
@@ -29,6 +32,7 @@ export function createSeries(input: CreateSeriesInput): Series {
     ...input,
     name: input.name || seriesNameFromId(input.id),
     aliases: input.aliases ?? [],
+    visibility: input.visibility ?? DEFAULT_VISIBILITY,
   };
 }
 

@@ -13,6 +13,12 @@ describe("series", () => {
     expect(() => createSeries({ id: "" })).toThrow(/id/i);
   });
 
+  it("defaults visibility to private when omitted", () => {
+    const series = createSeries({ id: "aninews" });
+
+    expect(series.visibility).toBe("private");
+  });
+
   it("title-cases a name from the id when no name is given", () => {
     const series = createSeries({ id: "spoolcast-dev-log" });
 
