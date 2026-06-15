@@ -143,17 +143,17 @@
 - [x] System renders a wikilink to a non-existent note in a distinct "unresolved" style
 - [x] User sees a note's backlinks ("linked mentions") with count
 - [x] User sees an empty-state when no notes link to the current note
-- [ ] System transcludes an embedded note (whole, by-heading, or by-block), bounded in recursion depth
-- [ ] User can filter garden notes by tag, reflected in the URL and the visible count
-- [ ] User can explore an interactive link graph of all notes
-- [ ] User can explore a local subgraph of the current note and its neighbors
-- [ ] System groups notes into communities and labels each cluster
-- [ ] System marks orphan notes (no links) and hub notes (high degree) distinctly
-- [ ] System suggests latent links between unlinked but related notes
-- [ ] System offers a co-tag lens connecting notes that share tags
+- [x] System transcludes an embedded note (whole, by-heading, or by-block), bounded in recursion depth
+- [x] User can filter garden notes by tag, reflected in the URL and the visible count
+- [x] User can explore an interactive link graph of all notes
+- [x] User can explore a local subgraph of the current note and its neighbors
+- [x] System groups notes into communities and labels each cluster
+- [x] System marks orphan notes (no links) and hub notes (high degree) distinctly
+- [x] System suggests latent links between unlinked but related notes
+- [x] System offers a co-tag lens connecting notes that share tags
 - [x] User can render callouts, collapsible callouts, math, footnotes, task lists, highlights, and mermaid diagrams in a note
 - [x] System strips Obsidian comments (%%…%%) from rendered output
-- [ ] System re-themes highlighted code and mermaid diagrams when the site theme toggles
+- [x] System re-themes highlighted code and mermaid diagrams when the site theme toggles
 
 ## M. Authoring (admin)
 

@@ -135,12 +135,13 @@ the gate. Fixing the tsconfig (likely `moduleResolution: "bundler"`) is a separa
 
 ---
 
-## 7. Current state  (last updated: 2026-06-15, after garden core port)
+## 7. Current state  (last updated: 2026-06-15, after garden port)
 
 **Tests: 42 passing (14 files). Suite is green. Build is green: 18 static pages. Sections A and C
 complete; prime-directive privacy breadth done. Log-entry read-path terminus is now wired to Astro
-and physically proven. Digital garden core read path is ported, not TDD-derived: index + note pages
-+ Obsidian markdown + wikilinks + backlinks + unified visibility gate are in place.**
+and physically proven. Digital garden is ported, not TDD-derived: legacy visual shell, index/detail
+pages, Obsidian markdown, wikilinks, backlinks, transclusion, tag filtering, graph analytics/canvas,
+local graphs, and unified visibility gate are in place.**
 
 The **first vertical slice is complete (5/5)** (ROADMAP Phase 2): a persisted JSON snapshot →
 `list()` → export (privacy gate) → render → real Astro page. Proven by a real `astro build`: the
@@ -221,7 +222,7 @@ Cycles completed:
   `getLogEntryPaths` (only public entries become pages, keyed by derived slug). 39:
   `FilesystemLogEntryStore` (full adapter contract in one cycle — a port of the vetted work-item FS
   adapter, not a re-discovery).
-- 40 / garden core port — **author-approved method deviation.** The legacy garden core was deliberately
+- 40 / garden port — **author-approved method deviation.** The legacy garden was deliberately
   ported instead of re-derived via one-test RED/GREEN cycles. No new tests were added by author choice;
   proof is the existing suite plus a real `npm run build`. What landed:
   - Log-entry terminus: `src/pages/log/[slug].astro`, `data/log-entries.json`, and `/project` now uses
@@ -232,12 +233,17 @@ Cycles completed:
     `{ workItems, logEntries, gardenNotes }` and gates all three with the one `selectPublic`.
   - Markdown renderer: legacy `garden/render.ts` and `garden/plugins.ts` were ported to
     `src/render/garden-markdown.ts` / `garden-plugins.ts`, with resolver injection from the app layer
-    and shared `src/render/escape.ts`.
+    and shared `src/render/escape.ts`; legacy transclusion resolution was ported to
+    `src/render/garden-embeds.ts`.
+  - Visual shell: legacy `BaseLayout`, `Header`, `ActivityStrip`, `GardenGraph`, global CSS, favicon,
+    graph analytics, tag filter UI, local graph, latent links, co-tag lens, and theme re-theming were
+    ported/re-seated into cleanroom paths.
   - Content: copied the 14 legacy garden notes and stamped `visibility: "public"`; added one private
-    fixture (`private-garden-seed.md`) and one public empty-backlinks fixture (`unlinked-leaf.md`).
+    fixture (`private-garden-seed.md`) and one public no-backlinks/orphan fixture (`unlinked-leaf.md`).
   - Build proof: 15 public garden detail pages + `/garden/` index are emitted; the private garden note
-    produces no file; a public wikilink to it renders unresolved; private note body text is absent from
-    `dist/`; backlinks count and empty state are present.
+    produces no file; a public wikilink to the private note renders unresolved; private note body text
+    is absent from `dist/`; backlinks, empty backlink state, local graphs, tag filtering, graph data,
+    orphan/hub markers, and transcluded embeds are present.
 
 Source layout:
 - `src/domain/` — pure rules (`work-item.ts`, `log-entry.ts`, `garden-note.ts`, `series.ts`, `visibility.ts`,
@@ -259,11 +265,14 @@ Source layout:
 - `src/app/` — `export-read-model.ts` (the seam:
   `exportReadModel(stores: { workItems, logEntries, gardenNotes })` → gated
   `{ workItems, logEntries, gardenNotes }`), `work-item-pages.ts`, `log-entry-pages.ts`,
-  `garden-note-pages.ts` (each takes the stores object and views its slice).
+  `garden-note-pages.ts` (each takes the stores object and views its slice). `garden-note-pages.ts`
+  also builds the public-only garden graph/tag/backlink/transclusion read model.
 - `src/render/` — `work-item-detail.ts`, `log-entry-detail.ts`; garden renderers live in
-  `garden-markdown.ts`, `garden-plugins.ts`, `garden-index.ts`, `garden-note-detail.ts`, plus
-  `escape.ts`. Work/log detail renderers still do not escape HTML; garden code does escape its own
-  surrounding text and plugin-generated HTML.
+  `garden-markdown.ts`, `garden-plugins.ts`, `garden-embeds.ts`, `garden-index.ts`,
+  `garden-note-detail.ts`, plus `escape.ts` and `date.ts`. Work/log detail renderers still do not
+  escape HTML; garden code does escape its own surrounding text and plugin-generated HTML.
+- `src/layouts/`, `src/components/`, `src/styles/`, `public/favicon.svg` — legacy garden visual shell
+  port: `BaseLayout`, `Header`, `ActivityStrip`, `GardenGraph`, and global CSS.
 - `src/pages/project/[slug].astro`, `src/pages/log/[slug].astro`, `src/pages/garden/index.astro`,
   `src/pages/garden/[slug].astro` — thin framework glue. Each constructs real filesystem stores
   inside the Astro boundary; the export seam decides visibility.
@@ -271,15 +280,13 @@ Source layout:
   including private; ids are opaque, the URL is the derived slug; the export gate omits private ones).
 - `data/log-entries.json` — one public + one private log fixture proving the log read path physically.
 - `content/garden/*.md` — 14 legacy public notes, one private garden fixture, and one public
-  empty-backlinks fixture.
+  empty-backlinks/orphan fixture.
 
 **Known shortcuts to unwind (do not mistake for finished work):**
-- **Garden core was ported, not TDD-built.** The dev-log records the author-approved deviation. Do not
+- **Garden was ported, not TDD-built.** The dev-log records the author-approved deviation. Do not
   backfill fake RED/GREEN claims.
-- **Garden transclusion is still deferred.** `![[...]]` currently renders the legacy placeholder; the
-  legacy `resolveEmbeds` pass was intentionally not ported in this core read-path pass.
-- **Garden graph analytics / D3 canvas / local graph / communities / hubs / orphans / latent links /
-  co-tag lens are deferred.** So are tag-filter URL UI and theme re-theming for code/mermaid.
+- The garden visual shell is intentionally scoped to the garden pages. The rest of the cleanroom site
+  still has only the rebuilt slices that exist so far.
 - `renderWorkItemDetail` **and** `renderLogEntryDetail` do **no HTML-escaping** yet (deferred XSS
   trust-boundary cycle — should land as a shared escape in both renderers).
 - **Read boundary** now: missing file → `[]`; non-array JSON → clear error (16); rows normalized
@@ -296,16 +303,11 @@ Source layout:
 
 ## 8. Next step
 
-Highest-value next garden pass: port the remaining self-contained garden pieces in this order:
-1. `resolveEmbeds` transclusion (whole note, heading, block id, bounded recursion).
-2. Tag-filter URL UI on `/garden`.
-3. Graph analytics + `GardenGraph.astro` equivalent (all-notes graph, local graph, communities,
-   hubs/orphans, latent links, co-tag lens).
-4. Theme re-theming for highlighted code and mermaid diagrams.
-
-Outside the garden, the next high-value moves remain a series read path (makes the series privacy
-behavior physically checkable) or **Section D (video detection / matching)** — the genuinely fiddly
-area (title-token overlap thresholds, fuzzy duplicate matching); budget accordingly.
+The garden port is now the reference for how to re-seat a legacy self-contained subsystem without
+violating the export privacy seam. Next high-value moves outside the garden remain a series read path
+(makes the series privacy behavior physically checkable) or **Section D (video detection / matching)** —
+the genuinely fiddly area (title-token overlap thresholds, fuzzy duplicate matching); budget
+accordingly.
 
 Drive rejection-first as usual.
 
