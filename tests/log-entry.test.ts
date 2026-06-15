@@ -34,4 +34,15 @@ describe("log entry", () => {
 
     expect(logEntry.slug).toBe("day-first-build");
   });
+
+  it("preserves an explicitly provided slug", () => {
+    const logEntry = createLogEntry({
+      id: "log-004",
+      title: "First Build",
+      day: 5,
+      slug: "pinned-log-key",
+    });
+
+    expect(logEntry.slug).toBe("pinned-log-key");
+  });
 });
