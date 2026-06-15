@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createLogEntry } from "../src/domain/log-entry";
+import { createLogEntry, dedupeLogSlugs } from "../src/domain/log-entry";
 
 describe("log entry", () => {
   it("rejects a log entry with no id", () => {
@@ -44,5 +44,17 @@ describe("log entry", () => {
     });
 
     expect(logEntry.slug).toBe("pinned-log-key");
+  });
+});
+
+describe("dedupeLogSlugs", () => {
+  it("keeps the first colliding slug and suffixes a later one with a short id", () => {
+    const first = createLogEntry({ id: "AAAAAAAA", title: "First Build", day: 1 });
+    const second = createLogEntry({ id: "BBBBBB99", title: "First Build", day: 1 });
+
+    const [a, b] = dedupeLogSlugs([first, second]);
+
+    expect(a.slug).toBe("day-1-first-build");
+    expect(b.slug).toBe("day-1-first-build-bbbbbb");
   });
 });
