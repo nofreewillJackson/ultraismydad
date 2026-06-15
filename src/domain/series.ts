@@ -76,5 +76,6 @@ export function resolveWorkItemSeriesId(item: WorkItem, series: Series[]): strin
   if (item.seriesId) {
     return resolveSeriesId(item.seriesId, series);
   }
-  return undefined;
+  const inferred = inferSeries({ title: item.title });
+  return inferred ? resolveSeriesId(inferred, series) : undefined;
 }
