@@ -74,4 +74,15 @@ describe("resolveWorkItemSeriesId", () => {
 
     expect(resolveWorkItemSeriesId(item, all)).toBeUndefined();
   });
+
+  it("honors an explicit series even off the spoolcast line", () => {
+    const item = createWorkItem({
+      id: "wi-4",
+      title: "Plain research note",
+      productLineId: "research",
+      seriesId: "news-anime-bot",
+    });
+
+    expect(resolveWorkItemSeriesId(item, all)).toBe("aninews");
+  });
 });
