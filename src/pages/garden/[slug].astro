@@ -1,0 +1,69 @@
+---
+import { getGardenNotePaths } from "../../app/garden-note-pages";
+import { FilesystemWorkItemStore } from "../../store/filesystem-work-item-store";
+import { FilesystemLogEntryStore } from "../../store/filesystem-log-entry-store";
+import { FilesystemGardenNoteStore } from "../../store/filesystem-garden-note-store";
+
+export async function getStaticPaths() {
+  return getGardenNotePaths({
+    workItems: new FilesystemWorkItemStore("data/work-items.json"),
+    logEntries: new FilesystemLogEntryStore("data/log-entries.json"),
+    gardenNotes: new FilesystemGardenNoteStore("content/garden"),
+  });
+}
+
+const { html, title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css"
+      crossorigin="anonymous"
+    />
+  </head>
+  <body>
+    <div set:html={html}></div>
+    <script is:inline>
+      document.querySelectorAll(".gm-callout[data-collapsible]").forEach(function (callout) {
+        if (callout.getAttribute("data-collapsed") === "true") callout.classList.add("gm-collapsed");
+        var title = callout.querySelector(".gm-callout-title");
+        if (title) title.addEventListener("click", function () {
+          callout.classList.toggle("gm-collapsed");
+        });
+      });
+
+      (function () {
+        var blocks = document.querySelectorAll(".gm-mermaid");
+        if (!blocks.length) return;
+        function decode(s) {
+          var t = document.createElement("textarea");
+          t.innerHTML = s;
+          return t.value;
+        }
+        async function renderAll() {
+          var mermaid = (await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs")).default;
+          mermaid.initialize({ startOnLoad: false, theme: "default", securityLevel: "loose", fontFamily: "inherit" });
+          for (var i = 0; i < blocks.length; i++) {
+            var el = blocks[i];
+            var src = decode(el.getAttribute("data-mermaid-src") || "");
+            try {
+              var out = await mermaid.render("gm-mmd-" + i + "-" + Date.now(), src);
+              el.innerHTML = out.svg;
+              el.classList.add("gm-mermaid-done");
+            } catch (error) {
+              el.textContent = src;
+            }
+          }
+        }
+        renderAll();
+      })();
+    </script>
+  </body>
+</html>

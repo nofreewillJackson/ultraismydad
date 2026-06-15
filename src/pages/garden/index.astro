@@ -1,0 +1,22 @@
+---
+import { getGardenIndex } from "../../app/garden-note-pages";
+import { FilesystemWorkItemStore } from "../../store/filesystem-work-item-store";
+import { FilesystemLogEntryStore } from "../../store/filesystem-log-entry-store";
+import { FilesystemGardenNoteStore } from "../../store/filesystem-garden-note-store";
+
+const { html } = await getGardenIndex({
+  workItems: new FilesystemWorkItemStore("data/work-items.json"),
+  logEntries: new FilesystemLogEntryStore("data/log-entries.json"),
+  gardenNotes: new FilesystemGardenNoteStore("content/garden"),
+});
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Garden</title>
+  </head>
+  <body set:html={html}></body>
+</html>

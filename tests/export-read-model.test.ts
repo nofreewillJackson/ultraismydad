@@ -4,6 +4,7 @@ import { createWorkItem } from "../src/domain/work-item";
 import { createLogEntry } from "../src/domain/log-entry";
 import { InMemoryWorkItemStore } from "../src/store/in-memory-work-item-store";
 import { InMemoryLogEntryStore } from "../src/store/in-memory-log-entry-store";
+import { InMemoryGardenNoteStore } from "../src/store/in-memory-garden-note-store";
 import { exportReadModel } from "../src/app/export-read-model";
 
 describe("export read model", () => {
@@ -25,6 +26,7 @@ describe("export read model", () => {
     const snapshot = await exportReadModel({
       workItems: store,
       logEntries: new InMemoryLogEntryStore(),
+      gardenNotes: new InMemoryGardenNoteStore(),
     });
 
     expect(snapshot.workItems).toEqual([publicItem]);
@@ -48,6 +50,7 @@ describe("export read model", () => {
     const snapshot = await exportReadModel({
       workItems: new InMemoryWorkItemStore(),
       logEntries,
+      gardenNotes: new InMemoryGardenNoteStore(),
     });
 
     expect(snapshot.logEntries).toEqual([publicEntry]);

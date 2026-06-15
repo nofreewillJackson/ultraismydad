@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createLogEntry } from "../src/domain/log-entry";
 import { InMemoryWorkItemStore } from "../src/store/in-memory-work-item-store";
 import { InMemoryLogEntryStore } from "../src/store/in-memory-log-entry-store";
+import { InMemoryGardenNoteStore } from "../src/store/in-memory-garden-note-store";
 import { getLogEntryPaths } from "../src/app/log-entry-pages";
 
 describe("log entry pages", () => {
@@ -20,6 +21,7 @@ describe("log entry pages", () => {
     const paths = await getLogEntryPaths({
       workItems: new InMemoryWorkItemStore(),
       logEntries,
+      gardenNotes: new InMemoryGardenNoteStore(),
     });
 
     expect(paths).toHaveLength(1);

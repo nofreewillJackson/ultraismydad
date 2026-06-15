@@ -137,12 +137,12 @@
 
 ## L. Reader — digital garden
 
-- [ ] User can browse the garden index of notes
-- [ ] User can read a garden note rendered with Obsidian-flavored markdown
-- [ ] User can follow a wikilink to another note
-- [ ] System renders a wikilink to a non-existent note in a distinct "unresolved" style
-- [ ] User sees a note's backlinks ("linked mentions") with count
-- [ ] User sees an empty-state when no notes link to the current note
+- [x] User can browse the garden index of notes
+- [x] User can read a garden note rendered with Obsidian-flavored markdown
+- [x] User can follow a wikilink to another note
+- [x] System renders a wikilink to a non-existent note in a distinct "unresolved" style
+- [x] User sees a note's backlinks ("linked mentions") with count
+- [x] User sees an empty-state when no notes link to the current note
 - [ ] System transcludes an embedded note (whole, by-heading, or by-block), bounded in recursion depth
 - [ ] User can filter garden notes by tag, reflected in the URL and the visible count
 - [ ] User can explore an interactive link graph of all notes
@@ -151,8 +151,8 @@
 - [ ] System marks orphan notes (no links) and hub notes (high degree) distinctly
 - [ ] System suggests latent links between unlinked but related notes
 - [ ] System offers a co-tag lens connecting notes that share tags
-- [ ] User can render callouts, collapsible callouts, math, footnotes, task lists, highlights, and mermaid diagrams in a note
-- [ ] System strips Obsidian comments (%%…%%) from rendered output
+- [x] User can render callouts, collapsible callouts, math, footnotes, task lists, highlights, and mermaid diagrams in a note
+- [x] System strips Obsidian comments (%%…%%) from rendered output
 - [ ] System re-themes highlighted code and mermaid diagrams when the site theme toggles
 
 ## M. Authoring (admin)
@@ -172,9 +172,9 @@
 
 - [x] System publishes a work item only when its visibility is exactly "public"
 - [x] System never publishes a work item that is private, gated, or unset
-- [ ] System hides a log entry marked private <!-- gate + default ready (selectPublic, Cycle 34); needs a log read path to be end-to-end -->
+- [x] System hides a log entry marked private
 - [ ] System hides a product line, series, or technology marked private <!-- series gated by selectPublic; needs a series read path -->
-- [ ] System excludes a garden note marked draft from the published site
+- [x] System excludes a garden note marked draft from the published site <!-- legacy draft is migrated to unified visibility; proven with a private garden note fixture -->
 - [ ] System omits a private file from a work item's detail entirely
 - [ ] System shows a gated file as "locked" and never emits its content
 - [ ] System refuses to embed a link from a denied host (github, youtube, loom, x, notion, drive, etc.)

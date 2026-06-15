@@ -135,11 +135,12 @@ the gate. Fixing the tsconfig (likely `moduleResolution: "bundler"`) is a separa
 
 ---
 
-## 7. Current state  (last updated: 2026-06-15, after Cycle 39)
+## 7. Current state  (last updated: 2026-06-15, after garden core port)
 
-**Tests: 42 passing (14 files). Suite is green. Working tree clean. Sections A and C complete;
-prime-directive privacy breadth done. Log-entry read-path slice is built but NOT yet wired to the
-framework (terminus pending — see §8).**
+**Tests: 42 passing (14 files). Suite is green. Build is green: 18 static pages. Sections A and C
+complete; prime-directive privacy breadth done. Log-entry read-path terminus is now wired to Astro
+and physically proven. Digital garden core read path is ported, not TDD-derived: index + note pages
++ Obsidian markdown + wikilinks + backlinks + unified visibility gate are in place.**
 
 The **first vertical slice is complete (5/5)** (ROADMAP Phase 2): a persisted JSON snapshot →
 `list()` → export (privacy gate) → render → real Astro page. Proven by a real `astro build`: the
@@ -219,44 +220,66 @@ Cycles completed:
   `renderLogEntryDetail` (pure, no escaping yet — same deferred debt as the work-item renderer). 38:
   `getLogEntryPaths` (only public entries become pages, keyed by derived slug). 39:
   `FilesystemLogEntryStore` (full adapter contract in one cycle — a port of the vetted work-item FS
-  adapter, not a re-discovery). **Terminus (Cycle 40) still pending**: no `/log/[slug].astro`, no
-  `data/log-entries.json`, and the `/project` page still passes a **temporary empty
-  `InMemoryLogEntryStore` scaffold** to the seam. So log-entry privacy is unit-proven but **not yet
-  physically proven by the build**.
+  adapter, not a re-discovery).
+- 40 / garden core port — **author-approved method deviation.** The legacy garden core was deliberately
+  ported instead of re-derived via one-test RED/GREEN cycles. No new tests were added by author choice;
+  proof is the existing suite plus a real `npm run build`. What landed:
+  - Log-entry terminus: `src/pages/log/[slug].astro`, `data/log-entries.json`, and `/project` now uses
+    `FilesystemLogEntryStore`. Build emits `/log/day-40-published-log-entry/` and omits
+    `/log/day-40-private-log-entry/`.
+  - Garden note domain/store/app/render route: `GardenNote` defaults to private; `FilesystemGardenNoteStore`
+    reads `content/garden/*.md` through `createGardenNote`; `exportReadModel` now takes
+    `{ workItems, logEntries, gardenNotes }` and gates all three with the one `selectPublic`.
+  - Markdown renderer: legacy `garden/render.ts` and `garden/plugins.ts` were ported to
+    `src/render/garden-markdown.ts` / `garden-plugins.ts`, with resolver injection from the app layer
+    and shared `src/render/escape.ts`.
+  - Content: copied the 14 legacy garden notes and stamped `visibility: "public"`; added one private
+    fixture (`private-garden-seed.md`) and one public empty-backlinks fixture (`unlinked-leaf.md`).
+  - Build proof: 15 public garden detail pages + `/garden/` index are emitted; the private garden note
+    produces no file; a public wikilink to it renders unresolved; private note body text is absent from
+    `dist/`; backlinks count and empty state are present.
 
 Source layout:
-- `src/domain/` — pure rules (`work-item.ts`, `log-entry.ts`, `series.ts`, `visibility.ts`,
+- `src/domain/` — pure rules (`work-item.ts`, `log-entry.ts`, `garden-note.ts`, `series.ts`, `visibility.ts`,
   `privacy-gate.ts`, `slug.ts`).
   `visibility.ts` holds the one `Visibility` type + `DEFAULT_VISIBILITY = "private"`; `privacy-gate.ts`
   is the single gate, `selectPublic<T extends { visibility }>` — the *only* place that decides
-  visibility. All three entities default to private and pass through this one gate.
+  visibility. Work items, log entries, series, and garden notes default to private and pass through
+  this one gate.
   `log-entry.ts` exports `createLogEntry` (per-entry factory: id guard, title default, slug) and
   `dedupeLogSlugs` (collection-level collision resolution). `series.ts` exports `createSeries`
   (id guard, name-from-id default, aliases→[]), `seriesNameFromId`, `resolveSeriesId`
   (alias→canonical, sourced from records), `inferSeries` (keyword table), and
   `resolveWorkItemSeriesId` (read-time effective series: explicit → fenced inference → none).
-  `work-item.ts` now carries `seriesId?` (the stored explicit assignment). (No series store/page yet;
-  the series domain is broadened ahead of wiring.)
-- `src/store/` — `work-item-store.ts` / `log-entry-store.ts` (ports); `in-memory-*` adapters (used in
-  tests); `filesystem-work-item-store.ts` (the build's real data source) and
-  `filesystem-log-entry-store.ts` (its twin — built Cycle 39, **not yet wired to a route/data file**).
-- `src/app/` — `export-read-model.ts` (the seam: `exportReadModel(stores: { workItems, logEntries })`
-  → gated `{ workItems, logEntries }`), `work-item-pages.ts`, `log-entry-pages.ts` (both take the
-  stores object and view their slice).
-- `src/render/` — `work-item-detail.ts`, `log-entry-detail.ts` (both pure; neither escapes HTML yet).
-- `src/pages/project/[slug].astro` — thin framework glue, routes by slug (constructs the FS store
-  *inside* `getStaticPaths`; Astro isolates that scope, so a module-level const is invisible to it).
-  Temporarily also constructs an empty `InMemoryLogEntryStore` to satisfy the seam's stores object
-  (scaffold; Cycle 40 swaps it for the FS log store). No `src/pages/log/` route yet.
+  `work-item.ts` now carries `seriesId?` (the stored explicit assignment). `garden-note.ts` exports
+  `createGardenNote`, `buildNoteIndex`, `resolveWikilink`, and `deriveBacklinks`.
+- `src/store/` — `work-item-store.ts` / `log-entry-store.ts` / `garden-note-store.ts` (ports);
+  `in-memory-*` adapters (used in tests); filesystem adapters for work items, log entries, and garden
+  notes. Garden notes are read-only hand-authored files under `content/garden/`.
+- `src/app/` — `export-read-model.ts` (the seam:
+  `exportReadModel(stores: { workItems, logEntries, gardenNotes })` → gated
+  `{ workItems, logEntries, gardenNotes }`), `work-item-pages.ts`, `log-entry-pages.ts`,
+  `garden-note-pages.ts` (each takes the stores object and views its slice).
+- `src/render/` — `work-item-detail.ts`, `log-entry-detail.ts`; garden renderers live in
+  `garden-markdown.ts`, `garden-plugins.ts`, `garden-index.ts`, `garden-note-detail.ts`, plus
+  `escape.ts`. Work/log detail renderers still do not escape HTML; garden code does escape its own
+  surrounding text and plugin-generated HTML.
+- `src/pages/project/[slug].astro`, `src/pages/log/[slug].astro`, `src/pages/garden/index.astro`,
+  `src/pages/garden/[slug].astro` — thin framework glue. Each constructs real filesystem stores
+  inside the Astro boundary; the export seam decides visibility.
 - `data/work-items.json` — the single snapshot source for this environment (contains all items,
   including private; ids are opaque, the URL is the derived slug; the export gate omits private ones).
+- `data/log-entries.json` — one public + one private log fixture proving the log read path physically.
+- `content/garden/*.md` — 14 legacy public notes, one private garden fixture, and one public
+  empty-backlinks fixture.
 
 **Known shortcuts to unwind (do not mistake for finished work):**
-- **Log read-path terminus is unfinished (Cycle 40).** `FilesystemLogEntryStore` exists and is
-  unit-proven, but there is no `/log/[slug].astro`, no `data/log-entries.json`, and the `/project`
-  page passes an **empty `InMemoryLogEntryStore` scaffold** to the seam. Until the terminus lands,
-  log-entry privacy is unit-proven only — **not** physically proven by the build. First job next
-  session.
+- **Garden core was ported, not TDD-built.** The dev-log records the author-approved deviation. Do not
+  backfill fake RED/GREEN claims.
+- **Garden transclusion is still deferred.** `![[...]]` currently renders the legacy placeholder; the
+  legacy `resolveEmbeds` pass was intentionally not ported in this core read-path pass.
+- **Garden graph analytics / D3 canvas / local graph / communities / hubs / orphans / latent links /
+  co-tag lens are deferred.** So are tag-filter URL UI and theme re-theming for code/mermaid.
 - `renderWorkItemDetail` **and** `renderLogEntryDetail` do **no HTML-escaping** yet (deferred XSS
   trust-boundary cycle — should land as a shared escape in both renderers).
 - **Read boundary** now: missing file → `[]`; non-array JSON → clear error (16); rows normalized
@@ -266,31 +289,25 @@ Source layout:
 - `FilesystemWorkItemStore.list()` returns `[]` on a *missing* file by design (archive starts
   empty; safe direction). A build-integrity gate for the "unexpectedly zero pages" case is a later
   phase, not the adapter's job.
+- `dedupeLogSlugs` is still not called by a read path; fold it in when sorting/listing log entries
+  arrives. `resolveSeriesId` / `resolveWorkItemSeriesId` likewise await a consumer.
 
 ---
 
 ## 8. Next step
 
-**Immediate first job: finish the log read-path slice (Cycle 40, the terminus).** Cycles 35-39 built
-the slice through the store/app/render layers (all unit-green), but it is **not wired to the
-framework**. To complete it and get the physical privacy proof:
+Highest-value next garden pass: port the remaining self-contained garden pieces in this order:
+1. `resolveEmbeds` transclusion (whole note, heading, block id, bounded recursion).
+2. Tag-filter URL UI on `/garden`.
+3. Graph analytics + `GardenGraph.astro` equivalent (all-notes graph, local graph, communities,
+   hubs/orphans, latent links, co-tag lens).
+4. Theme re-theming for highlighted code and mermaid diagrams.
 
-1. Add `src/pages/log/[slug].astro` (mirror `project/[slug].astro`): call
-   `getLogEntryPaths({ workItems: new FilesystemWorkItemStore("data/work-items.json"), logEntries:
-   new FilesystemLogEntryStore("data/log-entries.json") })` in `getStaticPaths`.
-2. Add `data/log-entries.json` with one public + one private entry (no slug — derived on read).
-3. **Swap the `/project` page's `InMemoryLogEntryStore` scaffold** for
-   `new FilesystemLogEntryStore("data/log-entries.json")` (remove the scaffold).
-4. Prove by `npm run build`: the public log entry → `dist/log/<slug>/index.html`; the private one →
-   no file. Then check inventory §L line 175 ("hides a log entry marked private").
-
-After that, the highest-value moves are: a series read path (makes §L 176 checkable), or
-**Section D (video detection / matching)** — the genuinely fiddly area (title-token overlap
-thresholds, fuzzy duplicate matching); budget accordingly.
+Outside the garden, the next high-value moves remain a series read path (makes the series privacy
+behavior physically checkable) or **Section D (video detection / matching)** — the genuinely fiddly
+area (title-token overlap thresholds, fuzzy duplicate matching); budget accordingly.
 
 Drive rejection-first as usual.
 
-(Parked, pick up when natural: `dedupeLogSlugs` is still not called by any read path — fold it into
-the log read path when sorting/listing arrives; `resolveSeriesId`/`resolveWorkItemSeriesId` likewise
-await a consumer; shared HTML-escaping in both renderers; wrap malformed-JSON parse errors with the
-snapshot path; build-integrity gate for "unexpectedly zero pages". Then Phases 3→7.)
+(Parked, pick up when natural: shared HTML-escaping in work/log renderers; wrap malformed-JSON parse
+errors with the snapshot path; build-integrity gate for "unexpectedly zero pages". Then Phases 3→7.)

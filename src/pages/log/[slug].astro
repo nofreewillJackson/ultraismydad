@@ -1,0 +1,26 @@
+---
+import { getLogEntryPaths } from "../../app/log-entry-pages";
+import { FilesystemWorkItemStore } from "../../store/filesystem-work-item-store";
+import { FilesystemLogEntryStore } from "../../store/filesystem-log-entry-store";
+import { FilesystemGardenNoteStore } from "../../store/filesystem-garden-note-store";
+
+export async function getStaticPaths() {
+  return getLogEntryPaths({
+    workItems: new FilesystemWorkItemStore("data/work-items.json"),
+    logEntries: new FilesystemLogEntryStore("data/log-entries.json"),
+    gardenNotes: new FilesystemGardenNoteStore("content/garden"),
+  });
+}
+
+const { html } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Log Entry</title>
+  </head>
+  <body set:html={html}></body>
+</html>

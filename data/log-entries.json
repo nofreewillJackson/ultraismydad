@@ -1,0 +1,14 @@
+[
+  {
+    "id": "log-040-public",
+    "title": "Published Log Entry",
+    "day": 40,
+    "visibility": "public"
+  },
+  {
+    "id": "log-040-private",
+    "title": "Private Log Entry",
+    "day": 40,
+    "visibility": "private"
+  }
+]
