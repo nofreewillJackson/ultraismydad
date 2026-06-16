@@ -183,8 +183,18 @@ dev = a committed fixture). No fallback cascade, no machine-specific paths.
 research; `rss.xml`, `llms.txt`, `robots.txt`, sitemap, 404, legacy redirects.
 **Why after Contract A:** readers are pure consumers of the snapshot. **Test the logic, not
 the pixels** (playbook §12): log author-filter + empty states, the embeddability rendering
-decision, files-tab visibility, three-state file gating. Layout is manual/snapshot
-verification. Maps to BEHAVIOR_INVENTORY §G–K nearly line for line.
+decision, and the **stack-map browsing-vs-focus layout** (the promotion/emphasis function is
+unit-testable; animation is manual). The **detail page renders curated metadata + links +
+optional demo — not a CMS:** the work item stays a lean atom, technical docs are the linked
+repo README (build-time opt-in projection) or a linked writeup, and the legacy runtime
+"files" tab and three-state file gating are **dropped** (CLEANROOM_SPEC §3.1 #13). Layout is
+manual/snapshot verification. Maps to BEHAVIOR_INVENTORY §G–K nearly line for line.
+
+- **Stack-map focus layout.** Browsing mode by default (updates newest→oldest). Focusing any
+  node derives — purely from *stored* relationships — which connected nodes promote toward the
+  focal area and which de-emphasize; clearing restores browsing. Store no layout data. Depends
+  on **explicit** video↔item / line / series relationships, so it's a second reason to retire
+  the §D title-overlap inference in favor of stored IDs.
 
 ### Phase 5 — Authoring surface + identity gate
 **Goal:** the admin — third-party SSO → **allow-list authz** (authenticated ≠ authorized; a
@@ -246,9 +256,18 @@ Resolved in this document (with reasoning above), recorded so they aren't re-lit
 - **Sort order → derive by recency**; if manual control is ever truly wanted it is one *view*
   setting honored by every surface, never a per-record field half the renderers override
   (CLEANROOM_SPEC §1.3).
+- **Detail page → curation surface, not a CMS.** Metadata canonical in work-item data; technical
+  docs canonical in the repo README (build-time, opt-in projection) or a linked writeup; the legacy
+  runtime "files" tab is dropped (read-path external fetch — CLEANROOM_SPEC §3.1 #13). The built
+  `WorkItem` is already a lean atom; keep it that way.
+- **Delivery surfaces are derived, never canonical for each other.** `/project/[slug]` is not the
+  source of truth for the stack map; both read the same facts.
 
 Still genuinely open (needs product input, not a coin-flip):
 
+- **One map canvas or two?** Legacy ships both `/` (home graph) and `/map`. The focus-layout UX
+  should land on ONE relationship canvas, or a deliberate split — decide before building, don't
+  inherit two.
 - **Log-entry visibility on the legacy live path** — the snapshot already requires explicit
   `"public"`; confirm that becomes the single rule (recommended) so the permissive
   `!="private"` path is dropped entirely.

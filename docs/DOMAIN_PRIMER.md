@@ -42,7 +42,7 @@ The central entity. Covers builds, experiments, **and** videos. (`src/lib/data.t
 | `name` | **effectively required** | Title. Missing → `"untitled project"` (§2.1). |
 | `slug` | derived | URL key. Missing → `slugify(name)` (§2.1). |
 | `desc` | optional | Short one-liner (card subtitle, meta description). |
-| `longDesc` | optional | Body, rendered as light markdown. |
+| `longDesc` | optional | Body, rendered as light markdown. **(Rebuild: not adopted — the detail page is curation, not a doc body; technical docs are canonical in the repo README. See CLEANROOM_SPEC §1.3 correction.)** |
 | `type` | optional | `"project" | "video" | "research"` — only loosely used; video-ness is mostly inferred (§3). |
 | `status` | optional | Free string; UI knows `launched / building / idea / abandoned`. Default → `"launched"` (§2.5). |
 | `date` | optional but central | `YYYY-MM-DD`. Drives day-number, sorting, heatmap, video↔project matching. |
@@ -51,7 +51,7 @@ The central entity. Covers builds, experiments, **and** videos. (`src/lib/data.t
 | `tags` | optional | Free-text tags. Default `[]`. |
 | `sortOrder` | optional | Tie-breaker in sorts; default `0`. |
 | `link` | optional | External "site" URL; candidate for live-demo embed (§5 embeddability). |
-| `repo` | optional | Source repo URL; enables a "files" tab. |
+| `repo` | optional | Source repo URL. **(Legacy "files" tab = a runtime GitHub browser; not ported — read-path external fetch, CLEANROOM_SPEC §3.1 #13. A build-time README projection may replace it.)** |
 | `media` | optional | Video/demo URL (YouTube/Loom/screen.studio) or embed source. |
 | `embedHeight` | optional | Embed sizing hint. |
 | `screenshots` | optional | Image URLs. Default `[]`. First one is a thumbnail fallback. |
@@ -323,6 +323,7 @@ These are shown unless `visibility === "private"`; a missing value means **publi
 - `visibility === "private"` → the file is **omitted entirely** (filtered before render).
 - Legacy also had a visible-but-locked file state: the file was listed with a locked badge, the body was replaced with placeholder copy, and content was never emitted. The rebuild has not ported this as a global visibility value; rebuild it as file-specific behavior only if the feature is deliberately needed.
 - otherwise (public) → content/URL shown in full.
+- **Rebuild:** file attachments are demoted from default domain to optional/editorial; with the repo README canonical for docs, inline file-paste is largely redundant (CLEANROOM_SPEC §1.3 correction).
 
 ### 4.5 Garden notes — *deny drafts*
 A note with `draft: true` is excluded from the build; drafts are only included when running in

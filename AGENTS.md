@@ -72,6 +72,14 @@ This is the single most important habit on this project: **think, don't cargo-cu
   documented fast/messy authoring. (CLEANROOM_SPEC §1.3/§2.4 #7 corrected.)
 - **One visibility rule: default-deny, uniform across all collections** (legacy was inconsistent).
 - **Sort by recency** (newest ship date first), not a per-record manual `sortOrder`.
+- **Detail page is a curation surface, not a CMS or a second README.** Work-item data is canonical
+  for *metadata only* (title, summary, dates, status, visibility, line, series, tech refs, and
+  repo/demo/video/writeup links). Technical documentation is canonical in the **repo README** (or a
+  linked writeup); the archive references it and may *project* it at build time (opt-in, public
+  repos only), never duplicates it, never fetches it at request time. The legacy runtime "files" tab
+  is **not ported**. Every delivery surface (detail, stack map, list, feeds) is a **derived read
+  model over shared work-item facts — none is canonical for another;** `/project/[slug]` is never the
+  source of truth for the stack map. (CLEANROOM_SPEC §1.3 correction / §3.1 #13.)
 - **Ignore** any `CLEANROOM_TDD_ONBOARDING_ROADMAP.md`-style stale roadmap; drive from the docs
   above + the TDD method in §5.
 
@@ -135,7 +143,7 @@ the gate. Fixing the tsconfig (likely `moduleResolution: "bundler"`) is a separa
 
 ---
 
-## 7. Current state  (last updated: 2026-06-16, after third visibility state cleanup)
+## 7. Current state  (last updated: 2026-06-16, after the detail-page/CMS spec correction)
 
 **Tests: 42 passing (14 files). Suite is green. Build is green: 18 static pages. Sections A and C
 complete; prime-directive privacy breadth done. Log-entry read-path terminus is now wired to Astro
@@ -143,7 +151,11 @@ and physically proven. Digital garden is ported, not TDD-derived: legacy visual 
 pages, Obsidian markdown, wikilinks, backlinks, transclusion, tag filtering, graph analytics/canvas,
 local graphs, and unified visibility gate are in place. The shared visibility vocabulary is now only
 `"public" | "private"`; the old third value had no live behavior beyond being withheld like private,
-so it was removed from source, parser allow-lists, current docs, tests, content/data, and build output.**
+so it was removed from source, parser allow-lists, current docs, tests, content/data, and build output.
+A docs-only spec correction then reframed the project detail page: it is a curation surface (metadata +
+links + optional demo), the repo README is canonical for technical docs, and every surface (detail,
+stack map, list, feeds) is a derived read model — none canonical for another. The built `WorkItem` stays
+a six-field atom, so the correction is a forward fence against re-importing the legacy CMS, not a refactor.**
 
 The **first vertical slice is complete (5/5)** (ROADMAP Phase 2): a persisted JSON snapshot →
 `list()` → export (privacy gate) → render → real Astro page. Proven by a real `astro build`: the
@@ -254,6 +266,15 @@ Cycles completed:
   The shared `Visibility` type is now `"public" | "private"`, the garden parser only accepts those
   values, current docs no longer carry the old status, and scans confirmed no current source/content/
   data/build-output occurrence. Historical dev-log/transcript mentions were left as audit history.
+- 42 / spec correction (docs only) — **detail page is curation, not a CMS.** Re-derived from the canon:
+  legacy `data.ts` is a 30+ field CMS (`longDesc`, `files`, runtime GitHub "files" browser), but the
+  built `WorkItem` is a six-field atom and `renderWorkItemDetail` is a `<h1>` stub, and no map/list/home
+  surface exists yet — so the CMS lives only in legacy + the docs that describe it. Reframed
+  BEHAVIOR_INVENTORY §H/§N, added the §G stack-map browsing-vs-focus behaviors; added CLEANROOM_SPEC §1.3
+  correction + §3.3 #7 + §3.1 #13; rewrote ROADMAP Phase 4 / §6; annotated DOMAIN_PRIMER; recorded the
+  decision in §4. No source/tests changed; suite still 42 green. The repo README is canonical for
+  technical docs; surfaces are derived read models, none canonical for another; the legacy runtime
+  "files" tab is dropped (read-path external fetch). See the dev-log entry of the same date.
 
 Source layout:
 - `src/domain/` — pure rules (`work-item.ts`, `log-entry.ts`, `garden-note.ts`, `series.ts`, `visibility.ts`,
@@ -318,7 +339,14 @@ The garden port is now the reference for how to re-seat a legacy self-contained 
 violating the export privacy seam. Next high-value moves outside the garden remain a series read path
 (makes the series privacy behavior physically checkable) or **Section D (video detection / matching)** —
 the genuinely fiddly area (title-token overlap thresholds, fuzzy duplicate matching); budget
-accordingly.
+accordingly. Section D also unblocks the stack-map focus layout, which needs explicit video↔item
+edges rather than inference.
+
+When the project detail page is built, it is a **curation surface**: a lean `WorkItem` atom + links +
+optional demo, with the repo README as the canonical home for technical docs (a later, opt-in,
+build-time projection — never a runtime fetch). Detail page, stack map, list, and feeds are all derived
+read models over the same facts; none is canonical for another. (AGENTS §4 / ROADMAP Phase 4 /
+CLEANROOM_SPEC §1.3 correction.)
 
 Drive rejection-first as usual.
 

@@ -97,6 +97,22 @@
 - [ ] User gets a 404 page for unknown routes
 - [ ] Visitor is redirected from legacy paths (/journal, /journal/*, /dashboard) to current ones
 
+### Stack / relationship map — browsing vs. focus (greenfield; no map surface exists in the rebuild yet)
+
+Default (browsing) state:
+- [ ] User sees the stack map in browsing mode by default: updates ordered newest→oldest, with technologies / projects / series / showcase in their normal grouped organization
+- [ ] User can focus any node — technology, update, project, series, or showcase — to switch the map from browsing into relationship-inspection mode
+
+Focused state:
+- [ ] System promotes the focused node's directly-connected nodes, across all columns, toward the focal/top area so connected pieces are visible together without scrolling far
+- [ ] System keeps unrelated nodes visible but pushed lower and/or visually de-emphasized while a node is focused
+- [ ] System derives the focus layout purely from STORED relationships (line, series, tech refs, video↔item, update refs) — never from inferred links — and stores no layout data
+- [ ] User can clear focus to restore the default browsing layout
+- [ ] System animates focus/clear transitions so connected nodes appear to MOVE rather than disappear (honoring prefers-reduced-motion)
+- [ ] User can focus, navigate, and clear focus by keyboard, with the focus state announced to assistive tech
+
+> Testable core: the promotion/emphasis function (focused node + relationship graph → ordered, emphasis-tagged node set). Animation and exact coordinates are manual verification ("test the logic, not the pixels").
+
 ## H. Reader — work-item detail
 
 - [ ] User can open a work item's detail page by slug
@@ -104,10 +120,16 @@
 - [ ] System shows a "live demo" tab by default when a demo is available, otherwise "info"
 - [ ] User can view an inline live demo when the item has self-contained artifact HTML
 - [ ] User can view an embedded live demo when the item's link is an embeddable host
-- [ ] User sees the item's long description rendered as light markdown
-- [ ] User sees the stack as chips, screenshots as a grid, and media as an embed
-- [ ] User can open external site and repo links
-- [ ] User sees a "files" tab only when the item has a repo
+- [ ] User sees the item's curated metadata on its detail page: summary, status, product line, series, and technology chips
+- [ ] User can open the item's external links (live site, repo, demo/video, writeup)
+- [ ] The detail page shows a short summary only; long-form technical documentation lives in the linked repo README or a linked writeup, never duplicated into the record
+- [ ] User sees optional curated media (screenshots grid / media embed) when present
+- [ ] (optional, deferred) System projects a public repo's README at build time as secondary docs, only when the operator opts the item in — never tracker-owned data, never a request-time fetch
+
+<!-- Removed (do not re-add): the legacy "files" tab was a runtime GitHub repo browser
+     (ProjectDetail.astro -> FileBrowser.astro calling api.github.com from the visitor's
+     browser). It is a read-path external fetch the bake forbids, and turns the detail page
+     into a CMS. The repo link already exists. See CLEANROOM_SPEC §3.1 #13. -->
 
 ## I. Reader — log / journal
 
@@ -175,8 +197,12 @@
 - [x] System hides a log entry marked private
 - [ ] System hides a product line, series, or technology marked private <!-- series covered by selectPublic; needs a series read path -->
 - [x] System excludes a garden note marked draft from the published site <!-- legacy draft is migrated to unified visibility; proven with a private garden note fixture -->
-- [ ] System omits a private file from a work item's detail entirely
-- [ ] System can model a locked file without emitting its content, if that feature is intentionally rebuilt
+<!-- File attachments (inline-paste/link content stored on the work item) are demoted from
+     default domain to an optional, editorial capability. With the repo README canonical for
+     docs, inline file-paste is largely redundant. Rebuild only on a real need. -->
+- [ ] (deferred) System omits a private file attachment from a work item's detail entirely, if file attachments are rebuilt
+- [ ] (deferred) System can model a locked file without emitting its content, if that feature is intentionally rebuilt
+- [ ] System never projects a README from a private repo, and never fetches repo data at request time
 - [ ] System refuses to embed a link from a denied host (github, youtube, loom, x, notion, drive, etc.)
 - [ ] System embeds only links from the allow-listed hosts; everything else is not embedded
 - [ ] System sandboxes an artifact-HTML demo (no same-origin) when embedding it

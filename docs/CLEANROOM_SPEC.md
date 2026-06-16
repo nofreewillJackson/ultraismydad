@@ -234,6 +234,19 @@ erDiagram
 
 **Entity notes (the conceptual contract, not the storage shape):**
 
+> **⚠ Correction — the detail page is curation, not a CMS; and no surface is canonical for another.**
+> The `WORK_ITEM` block above is the *legacy* shape. The rebuild deliberately did **not** adopt it: the
+> built `WorkItem` is a lean atom (`id, title, slug, productLineId, seriesId?, visibility`) and the
+> detail renderer is a stub, by design. Work-item data is canonical for curation **metadata only**
+> (summary, dates, status, visibility, line, series, tech refs, and repo/demo/video/writeup **links**).
+> **Technical documentation is canonical in the repo README** (or a linked writeup); the archive
+> references it and may *project* it at build time (opt-in, public repos only), but never stores a doc
+> body and never fetches repo data at request time. `long_desc` (a markdown body) and `FILE_ATTACHMENT`
+> (pasted file content) are the **second-README / mini-CMS accident — do not port**; the runtime repo
+> "files" browser is out too (§3.1 #13). Every delivery surface — detail page, stack map, list, feeds —
+> is a **derived read model over the same facts; none is the source of truth for another.** In
+> particular, `/project/[slug]` is never canonical for the stack map.
+
 - **Work item** is the atom. Almost everything else exists to *group*, *classify*, or *enrich* work items. A work item can simultaneously be "a project" and "a video" — the *kind* is derived, not stored rigidly.
 - **Product line** is a coarse grouping ("which of my ongoing efforts is this part of"); every work item **always resolves to exactly one line** (set explicitly, or via the catch-all default — see correction below). The as-built model keeps a catch-all bucket for items with no line. **⚠ Corrected (see Correction notice at top): the catch-all is *not* an accident — keep it.** What is an accident is *inference into* the catch-all (keyword-guessing a line from text, §2.5); kill that. The catch-all as an explicit holding bucket for deliberately-uncategorized fast drafts is legitimate domain. The rule that holds: every item resolves to exactly one line and the line is never inferred from text; whether an unset line defaults to the catch-all (recommended) or is required at creation is a workflow judgment call.
 - **Series** is a finer grouping *within* a line (e.g. an episodic run). Optional. (The as-built `aliases[]` on series and technology is an **accident — do not port**; aliases exist only to support name-based matching, which §3.1 #5 deletes.)
@@ -456,6 +469,7 @@ The current architecture is *functional and surprisingly resilient*, but it carr
 | 10 | **Three UI paradigms** (static templates + one component-framework island style + one vanilla-scripting island style) | Cognitive overhead; duplicated patterns; inconsistent interactivity | Pick **one rendering model**: static-first HTML with a single, consistent islands approach for the few interactive surfaces (graph, filters, theme). |
 | 11 | **Two markdown renderers** (a hand-rolled "lite" one and a full library) | Inconsistent output; maintenance of a custom parser | One renderer, one sanitization policy. |
 | 12 | **Secrets/config sprawl** (inline public keys, convention-based credential paths, many env var aliases) | Fragile setup; onboarding friction; accidental exposure risk | **Centralized typed config + a secrets manager**; one documented way to supply each credential. |
+| 13 | **Runtime repo file-browser on the detail page** (the legacy "files" tab calls the GitHub API from the visitor's browser) | A runtime external read on a path that should touch nothing live; unauthenticated → rate-limited 403s that break silently; leaks repo structure; turns the tracker into a CMS | **Remove it** (the repo link already exists). If repo docs are wanted, **project the README at bake time** (opt-in, public repos only) into the snapshot — derived, validated, atomic — never a request-time fetch. |
 
 ## 3.2 Target architecture (rebuild sketch)
 
@@ -501,6 +515,7 @@ flowchart LR
 4. **The "stale static site" problem is self-inflicted — prefer dissolving it to automating it.** The dirty-flag + change journal are an impressive solution to a problem the domain never posed. First ask whether the rebuild even bakes; a cached server makes the whole question disappear. Keep the change journal only if you independently want an audit history — it's a fine event log, just not a load-bearing part of publishing. *(If you do keep baking, then yes, wire the journal to rebuild/deploy and reset the flag on success — §3.1 #7.)*
 5. **Eliminate machine-specific and instance-specific code.** No absolute personal paths, no per-record override maps, no name-based joins. These are the three recurring sources of fragility.
 6. **Keep the read side dumb and fast — that's the real invariant, not the bake.** Visitors should keep paying zero runtime cost; all intelligence runs ahead of the request. *How* you achieve that (static bake, incremental regeneration, edge cache) is a stack choice. Preserve the *property*, not the specific materialization machine that currently delivers it.
+7. **Delivery surfaces are derived projections, never canonical for one another.** The detail page, the stack/relationship map, the list, and the feeds all read the *same* work-item facts and the same derived read model. None defines facts for another — in particular, `/project/[slug]` is not the source of truth for the stack map. Curation metadata is canonical in work-item data; technical documentation is canonical in the repo README (build-time, opt-in projection) or a linked writeup. A surface may *show* a projection; it may never *own* it.
 
 ## 3.4 Does materialization need to exist at all? (⚠ corrected — yes, it does)
 
