@@ -24,7 +24,7 @@
 
 ## B. Product-line (main project) inference
 
-#### NOTE: Tentative. These projects may not exist/is proprietary. The point of wiring these as an aspiration is to learn the infrastructure of Ralph's idea. By the end, we should have a robust system that has these inference routing.
+#### NOTE: Tentative. These projects may not exist/is proprietary. The point of wiring these as an aspiration is to learn the infrastructure of Ralph's idea. By the end, we should have a robust system that has these inference routing without necessarily having exactly these products. Spoolcast is open source a'la Ralph, so that will be a legitimate wiring. Any other open source will also be wired, to demonstrate the logic of this system such that new entries doesn't shift from the wiring logic much.
 
 - [ ] System keeps an explicit product-line assignment when one is set
 - [ ] System falls back to the parent assignment when no explicit line is set
