@@ -24,6 +24,8 @@
 
 ## B. Product-line (main project) inference
 
+#### NOTE: Tentative. These projects may not exist/is proprietary. The point of wiring these as an aspiration is to learn the infrastructure of Ralph's idea. By the end, we should have a robust system that has these inference routing.
+
 - [ ] System keeps an explicit product-line assignment when one is set
 - [ ] System falls back to the parent assignment when no explicit line is set
 - [ ] System infers a work item's product line from its text when none is assigned
