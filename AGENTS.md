@@ -135,13 +135,15 @@ the gate. Fixing the tsconfig (likely `moduleResolution: "bundler"`) is a separa
 
 ---
 
-## 7. Current state  (last updated: 2026-06-15, after garden port)
+## 7. Current state  (last updated: 2026-06-16, after third visibility state cleanup)
 
 **Tests: 42 passing (14 files). Suite is green. Build is green: 18 static pages. Sections A and C
 complete; prime-directive privacy breadth done. Log-entry read-path terminus is now wired to Astro
 and physically proven. Digital garden is ported, not TDD-derived: legacy visual shell, index/detail
 pages, Obsidian markdown, wikilinks, backlinks, transclusion, tag filtering, graph analytics/canvas,
-local graphs, and unified visibility gate are in place.**
+local graphs, and unified visibility gate are in place. The shared visibility vocabulary is now only
+`"public" | "private"`; the old third value had no live behavior beyond being withheld like private,
+so it was removed from source, parser allow-lists, current docs, tests, content/data, and build output.**
 
 The **first vertical slice is complete (5/5)** (ROADMAP Phase 2): a persisted JSON snapshot →
 `list()` → export (privacy gate) → render → real Astro page. Proven by a real `astro build`: the
@@ -216,7 +218,7 @@ Cycles completed:
 - 35–39 — **log-entry read-path vertical slice (built, not yet wired to Astro).** Mirrors the
   work-item slice (5-9) deliberately. 35: `LogEntryStore` port + `InMemoryLogEntryStore`. 36: extended
   `exportReadModel` to take a `{ workItems, logEntries }` **stores object** and return both collections
-  gated through the *same* `selectPublic` (the seam now assembles the whole public read model; page
+  filtered through the *same* `selectPublic` (the seam now assembles the whole public read model; page
   builders go through it, so `getWorkItemPaths` widened to take the stores object). 37:
   `renderLogEntryDetail` (pure, no escaping yet — same deferred debt as the work-item renderer). 38:
   `getLogEntryPaths` (only public entries become pages, keyed by derived slug). 39:
@@ -244,11 +246,20 @@ Cycles completed:
     produces no file; a public wikilink to the private note renders unresolved; private note body text
     is absent from `dist/`; backlinks, empty backlink state, local graphs, tag filtering, graph data,
     orphan/hub markers, and transcluded embeds are present.
+- 41 — **retired the old third visibility value.** Deep scan showed no live branch that treated it
+  differently from private: source accepted it only in the shared type and garden frontmatter parser,
+  then the single `selectPublic` gate withheld it like every non-public value. The only documented
+  distinct behavior belongs to legacy work-item files (visible-but-locked content), which this rebuild
+  has not modeled; if rebuilt, it should be file-specific rather than a global entity visibility state.
+  The shared `Visibility` type is now `"public" | "private"`, the garden parser only accepts those
+  values, current docs no longer carry the old status, and scans confirmed no current source/content/
+  data/build-output occurrence. Historical dev-log/transcript mentions were left as audit history.
 
 Source layout:
 - `src/domain/` — pure rules (`work-item.ts`, `log-entry.ts`, `garden-note.ts`, `series.ts`, `visibility.ts`,
   `privacy-gate.ts`, `slug.ts`).
-  `visibility.ts` holds the one `Visibility` type + `DEFAULT_VISIBILITY = "private"`; `privacy-gate.ts`
+  `visibility.ts` holds the one `Visibility` type (`"public" | "private"`) +
+  `DEFAULT_VISIBILITY = "private"`; `privacy-gate.ts`
   is the single gate, `selectPublic<T extends { visibility }>` — the *only* place that decides
   visibility. Work items, log entries, series, and garden notes default to private and pass through
   this one gate.
@@ -263,7 +274,7 @@ Source layout:
   `in-memory-*` adapters (used in tests); filesystem adapters for work items, log entries, and garden
   notes. Garden notes are read-only hand-authored files under `content/garden/`.
 - `src/app/` — `export-read-model.ts` (the seam:
-  `exportReadModel(stores: { workItems, logEntries, gardenNotes })` → gated
+  `exportReadModel(stores: { workItems, logEntries, gardenNotes })` → public-only
   `{ workItems, logEntries, gardenNotes }`), `work-item-pages.ts`, `log-entry-pages.ts`,
   `garden-note-pages.ts` (each takes the stores object and views its slice). `garden-note-pages.ts`
   also builds the public-only garden graph/tag/backlink/transclusion read model.

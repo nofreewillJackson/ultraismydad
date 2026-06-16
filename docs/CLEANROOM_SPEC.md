@@ -84,7 +84,7 @@ The 100-day framing fails this test as a domain invariant. It is a valuable edit
 Two failure modes this guards against:
 
 1. **Canonizing an accident as architecture.** The bake / snapshot / publish-ledger apparatus is the biggest example — see Part 0 and §3.4.
-2. **Smuggling accidents into the schema.** Fields that exist only to paper over legacy data or un-captured relationships — parallel stack lists, name `aliases`, the unused `gated` state, `snapshotHtml` — are *not* domain (see §1.3).
+2. **Smuggling accidents into the schema.** Fields that exist only to paper over legacy data or un-captured relationships — parallel stack lists, name `aliases`, the unused third visibility state, `snapshotHtml` — are *not* domain (see §1.3).
 
 Where the rest of this spec describes such an accident, it now flags it explicitly as **(accident — do not port)** rather than presenting it as a thing to rebuild.
 
@@ -100,7 +100,7 @@ The system is best understood as three planes with a strict one-directional flow
 flowchart LR
   subgraph A["AUTHORING PLANE (private, mutable, live)"]
     direction TB
-    AdminUI["Admin console\n(gated, single operator)"]
+    AdminUI["Admin console\nauthenticated, single operator"]
     Agents["Automated authors\n(AI agents via a tool bridge)"]
     Store[("Operational datastore\n(documents: work items,\nlines, series, taxonomy, log)")]
     Signal[["Publish-state signal\n(dirty flag + change journal)"]]
@@ -241,7 +241,7 @@ erDiagram
 - **Video bundle** is a rich, nested, **deliberately path-free** record describing a produced video — its segments, the visual style system used, recurring characters, cited sources, full transcript, and a production-cost/credits summary. It is the public-facing contract for the media side, intentionally decoupled from the raw production files it was derived from.
 - **Log entry** is a dated narrative post, attributed to either the human or an AI author, optionally cross-linking work items.
 - **Research doc** is authored long-form content managed as files rather than datastore records — a parallel content channel.
-- **Presentation hints are not domain.** Several as-built fields are pure display mechanics and are deliberately *omitted* from the model above: per-item `embed_height` (iframe sizing), the `gated` visibility value (scaffolding for an unbuilt paywall), and `snapshotHtml` (a UI-less backup of `inline_demo_html`). None survive the §0.5 test. If a rebuild wants embed sizing, it carries it as an explicit *view* concern, never as part of the domain record.
+- **Presentation hints are not domain.** Several as-built fields are pure display mechanics and are deliberately *omitted* from the model above: per-item `embed_height` (iframe sizing), the third visibility state (scaffolding for an unbuilt paywall), and `snapshotHtml` (a UI-less backup of `inline_demo_html`). None survive the §0.5 test. If a rebuild wants embed sizing, it carries it as an explicit *view* concern, never as part of the domain record.
 - **Manual `sort_order` is a *contradiction*, not an editorial intent — resolve it, don't inherit it.** The as-built system can't decide whether the operator orders lines/series by hand. An explicit `sortOrder` exists and the admin tool, list view, and map view all honor it (built to be editorial) — but the flagship homepage graph silently re-derives order by recency, so the hand-set order never reaches the front page. That disagreement *is* the finding (an instance of §3.1 #4/#10), and it's a decision the rebuild must make on purpose, not a field to port. Default: **derive by recency**; if manual control is genuinely wanted, make it one *view* setting honored by every surface, not a per-record field half the renderers override.
 
 ## 1.4 Lifecycle & visibility states
@@ -268,9 +268,9 @@ stateDiagram-v2
   private --> public : operator publishes
   public --> private : operator unpublishes
   note right of private
-    A third as-built state, "gated"
+    A third as-built state
     (a visible-but-locked paywall
-    placeholder), is omitted:
+    placeholder) is omitted:
     accident — do not port until a
     real paywall exists (§0.5).
   end note

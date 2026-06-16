@@ -62,7 +62,7 @@ function asBoolean(value: unknown): boolean | undefined {
 }
 
 function asVisibility(value: unknown): Visibility | undefined {
-  if (value === "public" || value === "private" || value === "gated") {
+  if (value === "public" || value === "private") {
     return value;
   }
   return undefined;

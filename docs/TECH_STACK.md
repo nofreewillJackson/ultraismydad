@@ -118,7 +118,7 @@ The entire visual system is a **closed set of CSS custom properties** in `src/st
 
 - **green** = the brand accent / "build" / launched / public / primary action.
 - **blue** = "video" entries.
-- **amber** = "research" entries, the **garden** nav segment (glyph `❧`), warnings, and "locked/gated".
+- **amber** = "research" entries, the **garden** nav segment (glyph `❧`), warnings, and locked states.
 - **dot colors** in timelines: `.dot` green (build), `.dot.video` blue, `.dot.research` amber (`global.css:498-500`).
 - One hard-coded non-token color: PipelineCPC mark uses `#f97316` (orange) on `#0f172a` (`global.css:289,395-399`).
 

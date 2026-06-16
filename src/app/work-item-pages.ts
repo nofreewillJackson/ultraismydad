@@ -8,7 +8,7 @@ export type WorkItemPage = {
 };
 
 // Each page builder is a view onto the one public read model: it assembles the
-// full gated model (via the single export seam) and renders its own collection.
+// full read model (via the single export seam) and renders its own collection.
 export async function getWorkItemPaths(stores: ExportStores): Promise<WorkItemPage[]> {
   const { workItems } = await exportReadModel(stores);
   return workItems.map((workItem) => ({

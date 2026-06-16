@@ -77,7 +77,7 @@ Attached to a work item. (`src/lib/data.ts:12-18`)
 | `type` | `"paste"` (inline content) or `"link"` (external URL). |
 | `content` | Inline text (for `paste`). |
 | `url` | External URL (for `link`). |
-| `visibility` | `"public" | "private" | "gated"` — controls whether/how it shows (§4.4). |
+| `visibility` | Legacy accepted three values; the rebuild keeps only `"public" | "private"` for the global visibility vocabulary. |
 
 ### 1.3 Log Entry ("journal")
 
@@ -302,7 +302,7 @@ The single most important class of rules: **what prevents a record from being se
 
 ### 4.1 Work items — *strict allow-list*
 A work item is public **only if `visibility === "public"`**. Anything else — `private`,
-`gated`, empty, or missing — is **excluded**. Enforced twice: the build snapshot only bakes
+empty, or missing — is **excluded**. Enforced twice: the build snapshot only bakes
 `visibility === "public"` projects (`scripts/sync-firestore-snapshot.mjs:56-62`), and the read
 layer filters to `=== "public"` again (`data.ts:467-488`).
 
@@ -318,10 +318,10 @@ needed:** pick one rule. The safer, intended rule is **explicit `"public"` to pu
 These are shown unless `visibility === "private"`; a missing value means **public**
 (`data.ts:519, 558, 597`; defaults file all set `"public"`).
 
-### 4.4 Work-item files — *three-state*
+### 4.4 Work-item files — *legacy locked state*
 (`src/components/ProjectDetail.astro:8, 72-89`)
 - `visibility === "private"` → the file is **omitted entirely** (filtered before render).
-- `visibility === "gated"` → the file is listed but shows a **"locked"** badge and the body is replaced with *"content locked — unlock to read"* (content never emitted). A `gated` file of `type: "link"` still exposes its URL.
+- Legacy also had a visible-but-locked file state: the file was listed with a locked badge, the body was replaced with placeholder copy, and content was never emitted. The rebuild has not ported this as a global visibility value; rebuild it as file-specific behavior only if the feature is deliberately needed.
 - otherwise (public) → content/URL shown in full.
 
 ### 4.5 Garden notes — *deny drafts*

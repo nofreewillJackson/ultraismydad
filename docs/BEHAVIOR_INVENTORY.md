@@ -171,12 +171,12 @@
 ## N. Trust boundaries & error paths
 
 - [x] System publishes a work item only when its visibility is exactly "public"
-- [x] System never publishes a work item that is private, gated, or unset
+- [x] System never publishes a work item that is private or unset
 - [x] System hides a log entry marked private
-- [ ] System hides a product line, series, or technology marked private <!-- series gated by selectPublic; needs a series read path -->
+- [ ] System hides a product line, series, or technology marked private <!-- series covered by selectPublic; needs a series read path -->
 - [x] System excludes a garden note marked draft from the published site <!-- legacy draft is migrated to unified visibility; proven with a private garden note fixture -->
 - [ ] System omits a private file from a work item's detail entirely
-- [ ] System shows a gated file as "locked" and never emits its content
+- [ ] System can model a locked file without emitting its content, if that feature is intentionally rebuilt
 - [ ] System refuses to embed a link from a denied host (github, youtube, loom, x, notion, drive, etc.)
 - [ ] System embeds only links from the allow-listed hosts; everything else is not embedded
 - [ ] System sandboxes an artifact-HTML demo (no same-origin) when embedding it

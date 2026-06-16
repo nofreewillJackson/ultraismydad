@@ -43,7 +43,7 @@ machinery that only existed to work around the old stack.
 | Survives the test → **build it** | Fails the test → **delete it** |
 |---|---|
 | The **privacy boundary** (default-deny, enforced once) | The **inference cascades** (line, series, video↔item title-matching) |
-| **Explicit relationships** (line is set or defaults to catch-all — never *inferred* from text) | The **inference cascade** that guesses a line, **dual stack lists**, name `aliases`, `gated`, `snapshotHtml` |
+| **Explicit relationships** (line is set or defaults to catch-all — never *inferred* from text) | The **inference cascade** that guesses a line, **dual stack lists**, name `aliases`, third visibility state, `snapshotHtml` |
 | **Path-free public contracts** (read snapshot, video bundle) | **Per-record patch maps** hardcoded in code (thumbnails, stack remaps, ref aliases) |
 | **Derived presentation** (slugs, day math, heatmap, counts, sort, embeddability) | The **five-deep fallback cascade** + the **machine-specific absolute path** |
 | The **media-ingestion ETL** as a content-prep concern | The **manual** publish trigger; the **unwired dirty-flag** |

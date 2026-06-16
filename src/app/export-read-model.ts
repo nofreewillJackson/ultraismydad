@@ -8,7 +8,7 @@ import type { GardenNoteStore } from "../store/garden-note-store";
 
 // The export seam: the single place where stored data becomes the public read
 // model. Every collection passes through the one `selectPublic` gate here, so
-// privacy is decided once. As the archive grows, add a store + a gated field —
+// privacy is decided once. As the archive grows, add a store + read-model field,
 // never a second visibility check.
 export type ExportStores = {
   workItems: WorkItemStore;

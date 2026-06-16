@@ -8,7 +8,7 @@ export type LogEntryPage = {
 };
 
 // A view onto the one public read model (mirror of getWorkItemPaths): assemble
-// the full gated model through the single export seam, then render the log-entry
+// the full read model through the single export seam, then render the log-entry
 // slice. The route keys on each entry's derived slug.
 export async function getLogEntryPaths(stores: ExportStores): Promise<LogEntryPage[]> {
   const { logEntries } = await exportReadModel(stores);

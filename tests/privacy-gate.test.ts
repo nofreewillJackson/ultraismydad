@@ -18,17 +18,10 @@ describe("privacy gate", () => {
       productLineId: "line-001",
       visibility: "private",
     });
-    const gatedWorkItem = createWorkItem({
-      id: "work-gated",
-      title: "Reserved Build",
-      productLineId: "line-001",
-      visibility: "gated",
-    });
 
     const readModelItems = selectPublic([
       publicWorkItem,
       privateWorkItem,
-      gatedWorkItem,
     ]);
 
     expect(readModelItems).toEqual([publicWorkItem]);
